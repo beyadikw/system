@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>رفع تقرير الفعالية · خذ بيدي</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: var(--font-sans); background:#FAF8F2; color:#2A2520; }
+  .top { background:#2A2520; color:#fff; padding:16px 0; }
+  .top .in { max-width:760px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:14px; }
+  .top img { height:42px; background:#fff; border-radius:9px; padding:5px 9px; }
+  .top b { font-size:15px; display:block; }
+  .top small { font-size:12px; color:#cfc8bd; }
+  .wrap { max-width:760px; margin:0 auto; padding:26px 24px 70px; }
+  .banner { background:#FBF6EA; border:1px solid #EADFC4; border-radius:12px; padding:14px 18px; font-size:13px; color:#997633; margin-bottom:20px; }
+  .card { background:#fff; border:1px solid #EADFC4; border-radius:16px; padding:24px 26px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .meta { color:#7a7268; font-size:13px; margin:0 0 20px; }
+  label { display:block; font-size:13px; font-weight:600; margin:16px 0 8px; }
+  .req { color:#CA483A; }
+  input[type=number], textarea { width:100%; padding:12px 14px; border:1px solid #d8d2c4; border-radius:12px; font-size:14px; font-family:inherit; outline:none; }
+  textarea { min-height:90px; resize:vertical; line-height:1.7; }
+  input:focus, textarea:focus { border-color:#B8924A; box-shadow:0 0 0 3px #F4ECD9; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .seg { display:flex; gap:10px; }
+  .seg button { flex:1; padding:11px; border:1px solid #d8d2c4; background:#fff; border-radius:10px; cursor:pointer; font-family:inherit; font-size:13px; }
+  .seg button.on { border-color:#B8924A; background:#FBF6EA; color:#997633; font-weight:700; }
+  .upgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .slot { aspect-ratio:4/3; border:1.5px dashed #d8d2c4; border-radius:12px; background:#FAF8F2 center/cover no-repeat; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#9a9388; font-size:12px; position:relative; }
+  .slot.filled { border-style:solid; border-color:#EADFC4; }
+  .slot .rm { position:absolute; top:6px; inset-inline-end:6px; width:24px; height:24px; border-radius:50%; border:none; background:rgba(0,0,0,.55); color:#fff; cursor:pointer; }
+  .submit { width:100%; margin-top:24px; padding:14px; border:none; border-radius:12px; background:#B8924A; color:#fff; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .submit:hover { background:#997633; }
+  .submit:disabled { opacity:.55; cursor:default; }
+  .err { background:#FCEDEB; color:#CA483A; font-size:13px; padding:10px 13px; border-radius:10px; margin-top:14px; display:none; }
+  .done { text-align:center; padding:50px 20px; }
+  .done .seal { width:84px; height:84px; border-radius:50%; background:#E5F5EA; color:#2C9942; display:grid; place-items:center; font-size:42px; margin:0 auto 20px; }
+  .state-hidden { display:none; }
+</style>
+</head>
+<body>
+  <div class="top"><div class="in">
+    <img id="logo" src="logo.png" alt="خذ بيدي" />
+    <div><b>رفع تقرير الفعالية</b><small>مشروع خذ بيدي · رابط مخصّص للجهة المنفّذة</small></div>
+  </div></div>
+
+  <div class="wrap">
+    <div id="loading" class="banner">جارٍ تحميل بيانات الفعالية…</div>
+
+    <form id="form" class="card state-hidden">
+      <div class="banner" id="banner"></div>
+      <h1 id="title">—</h1>
+      <p class="meta" id="meta"></p>
+
+      <div class="two">
+        <div>
+          <label>الحضور الفعلي <span class="req">*</span></label>
+          <input id="attendees" type="number" min="0" placeholder="0" />
+        </div>
+        <div>
+          <label>فيديو قصير من الفعالية</label>
+          <div class="seg" id="videoSeg">
+            <button type="button" data-v="1">متوفّر</button>
+            <button type="button" data-v="0" class="on">غير متوفّر</button>
+          </div>
+        </div>
+      </div>
+
+      <label>صور الفعالية <small style="font-weight:400;color:#9a9388">— حتى ٦ صور عالية الجودة</small></label>
+      <div class="upgrid" id="photos"></div>
+
+      <label>ملخّص الفعالية <span class="req">*</span></label>
+      <textarea id="summary" placeholder="وصف موجز لما جرى في الفعالية ومستوى التفاعل…"></textarea>
+
+      <label>النتائج والأثر</label>
+      <textarea id="outcomes" placeholder="ما النتائج الملموسة والأثر الذي تحقّق؟"></textarea>
+
+      <label>ملاحظات وتوصيات</label>
+      <textarea id="notes" placeholder="توصيات للفعاليات القادمة…"></textarea>
+
+      <button class="submit" id="btn" type="submit">إرسال التقرير إلى خذ بيدي</button>
+      <div class="err" id="err"></div>
+    </form>
+
+    <div id="success" class="card done state-hidden">
+      <div class="seal">✓</div>
+      <h1>تم استلام تقريركم بنجاح</h1>
+      <p class="meta">شكراً لكم. وصل التقرير إلى فريق مشروع خذ بيدي وأصبح متاحاً في النظام.</p>
+    </div>
+  </div>
+
+  <script src="logo-data.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    if (window.BK_LOGO) document.getElementById('logo').src = window.BK_LOGO;
+    const token = new URLSearchParams(location.search).get('token');
+    const $ = (id) => document.getElementById(id);
+    let video = 0;
+    const photoFiles = new Array(6).fill(null);
+
+    // أزرار الفيديو
+    $('videoSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      video = Number(b.dataset.v);
+      $('videoSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    }));
+
+    // خانات الصور
+    const grid = $('photos');
+    for (let i = 0; i < 6; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot'; slot.textContent = 'صورة ' + (i + 1);
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none';
+      inp.addEventListener('change', e => {
+        const f = e.target.files[0]; if (!f) return;
+        photoFiles[i] = f;
+        const url = URL.createObjectURL(f);
+        slot.style.backgroundImage = `url(${url})`; slot.classList.add('filled'); slot.textContent = '';
+        const rm = document.createElement('button');
+        rm.className = 'rm'; rm.type = 'button'; rm.textContent = '×';
+        rm.addEventListener('click', ev => { ev.stopPropagation(); photoFiles[i] = null; slot.style.backgroundImage = ''; slot.classList.remove('filled'); slot.textContent = 'صورة ' + (i + 1); inp.value = ''; });
+        slot.appendChild(rm);
+      });
+      slot.addEventListener('click', () => inp.click());
+      slot.appendChild(inp); grid.appendChild(slot);
+    }
+
+    async function load() {
+      if (!token) { $('loading').textContent = 'رابط غير صالح: لا يوجد رمز.'; return; }
+      try {
+        const r = await API.share.get(token);
+        $('title').textContent = r.event_name;
+        $('meta').textContent = `${r.hall_name || ''} · ${r.proposed_dates || ''} · المحاضر ${r.lecturer || '—'}`;
+        $('banner').textContent = `هذه صفحة مخصّصة لـ «${r.organization}» لرفع تقرير فعالية «${r.event_name}». بعد الإرسال يصل التقرير مباشرةً إلى فريق خذ بيدي.`;
+        $('attendees').placeholder = `0 (السعة ${r.hall_capacity || '—'})`;
+        $('loading').style.display = 'none';
+        $('form').classList.remove('state-hidden');
+      } catch (ex) {
+        $('loading').textContent = ex.message;
+      }
+    }
+    load();
+
+    $('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = $('err'); err.style.display = 'none';
+      if (!$('attendees').value.trim() || !$('summary').value.trim()) {
+        err.textContent = 'الحضور الفعلي وملخّص الفعالية حقلان مطلوبان.'; err.style.display = 'block'; return;
+      }
+      const btn = $('btn'); btn.disabled = true; btn.textContent = 'جارٍ الإرسال…';
+      try {
+        await API.share.submit(token, {
+          attendees: $('attendees').value, video: String(video),
+          summary: $('summary').value, outcomes: $('outcomes').value, notes: $('notes').value,
+        }, photoFiles.filter(Boolean));
+        $('form').classList.add('state-hidden');
+        $('success').classList.remove('state-hidden');
+        window.scrollTo({ top: 0 });
+      } catch (ex) {
+        err.textContent = ex.message; err.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'إرسال التقرير إلى خذ بيدي';
+      }
+    });
+  </script>
+</body>
+</html>
