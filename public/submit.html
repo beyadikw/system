@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>تقديم طلب رعاية فعالية · خذ بيدي</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: var(--font-sans); background:#FAF8F2; color:#2A2520; }
+  .top { background:#2A2520; color:#fff; padding:16px 0; }
+  .top .in { max-width:780px; margin:0 auto; padding:0 24px; display:flex; align-items:center; gap:14px; }
+  .top img { height:46px; background:#fff; border-radius:9px; padding:5px 9px; }
+  .top b { font-size:15px; display:block; }
+  .top small { font-size:12px; color:#cfc8bd; }
+  .wrap { max-width:780px; margin:0 auto; padding:26px 24px 70px; }
+  .card { background:#fff; border:1px solid #EADFC4; border-radius:16px; padding:24px 26px; margin-bottom:18px; }
+  h1 { font-size:21px; margin:0 0 4px; }
+  .sub { color:#7a7268; font-size:13.5px; margin:0 0 4px; line-height:1.7; }
+  h2 { font-size:15px; margin:0 0 14px; padding-inline-start:11px; border-inline-start:4px solid #B8924A; }
+  label { display:block; font-size:13px; font-weight:600; margin:15px 0 7px; }
+  label small { font-weight:400; color:#9a9388; }
+  .req { color:#CA483A; }
+  input, textarea, select { width:100%; padding:12px 14px; border:1px solid #d8d2c4; border-radius:12px; font-size:14px; font-family:inherit; outline:none; background:#fff; }
+  textarea { min-height:88px; resize:vertical; line-height:1.7; }
+  input:focus, textarea:focus, select:focus { border-color:#B8924A; box-shadow:0 0 0 3px #F4ECD9; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .ltr { direction:ltr; text-align:right; }
+  /* الشروط */
+  .term { display:flex; gap:13px; padding:13px 0; border-bottom:1px solid #f0ead9; }
+  .term:last-child { border-bottom:none; }
+  .term .n { width:28px; height:28px; border-radius:8px; flex-shrink:0; background:#F4ECD9; color:#997633; display:grid; place-items:center; font-weight:700; font-size:13px; }
+  .term .tx { font-size:13.5px; line-height:1.7; }
+  .agree { display:flex; align-items:center; gap:13px; padding:16px 18px; border-radius:12px; background:#FBF6EA; border:1px solid #EADFC4; margin-top:18px; cursor:pointer; }
+  .agree .cbx { width:24px; height:24px; border-radius:7px; flex-shrink:0; border:2px solid #B8924A; background:#fff; display:grid; place-items:center; }
+  .agree .cbx.on { background:#B8924A; }
+  .agree .cbx.on::after { content:'✓'; color:#fff; font-weight:700; font-size:15px; }
+  .agree span { font-size:13.5px; font-weight:600; }
+  /* فئات */
+  .cats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .cat { display:flex; align-items:center; gap:10px; padding:11px 14px; border:1px solid #d8d2c4; border-radius:11px; cursor:pointer; font-size:13.5px; }
+  .cat.on { border-color:#B8924A; background:#FBF6EA; color:#997633; font-weight:600; }
+  .cat .mk { width:18px; height:18px; border-radius:5px; border:2px solid #d8d2c4; flex-shrink:0; }
+  .cat.on .mk { border-color:#B8924A; background:#B8924A; }
+  /* رفع ملف */
+  .drop { border:1.5px dashed #d8d2c4; border-radius:12px; padding:16px; text-align:center; cursor:pointer; font-size:13px; color:#9a9388; background:#FAF8F2; }
+  .drop.on { border-style:solid; border-color:#2C9942; background:#E5F5EA; color:#1E7A32; text-align:start; }
+  .drop b { display:block; font-size:13px; color:#2A2520; }
+  .submit { width:100%; margin-top:8px; padding:14px; border:none; border-radius:12px; background:#B8924A; color:#fff; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .submit:hover { background:#997633; }
+  .submit:disabled { opacity:.55; cursor:default; }
+  .ghost { background:#fff; border:1px solid #d8d2c4; color:#2A2520; padding:12px 20px; border-radius:12px; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; }
+  .nav { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:22px; padding-top:18px; border-top:1px solid #f0ead9; }
+  .err { background:#FCEDEB; color:#CA483A; font-size:12.5px; margin-top:6px; }
+  .errbox { background:#FCEDEB; color:#CA483A; font-size:13px; padding:10px 13px; border-radius:10px; margin-top:14px; display:none; }
+  .steps { display:flex; align-items:center; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .stp { display:flex; align-items:center; gap:8px; font-size:12.5px; color:#9a9388; }
+  .stp .d { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-weight:700; background:#fff; border:2px solid #e3dccb; }
+  .stp.on .d { border-color:#B8924A; background:#FBF6EA; color:#997633; }
+  .stp.ok .d { background:#B8924A; border-color:#B8924A; color:#fff; }
+  .stp.on, .stp.ok { color:#2A2520; }
+  .done { text-align:center; padding:46px 20px; }
+  .done .seal { width:84px; height:84px; border-radius:50%; background:#E5F5EA; color:#2C9942; display:grid; place-items:center; font-size:42px; margin:0 auto 20px; }
+  .ref { display:inline-flex; gap:8px; font-family:var(--font-mono); font-weight:700; background:#F4ECD9; color:#997633; padding:9px 18px; border-radius:10px; margin:16px 0; }
+  .state-hidden { display:none; }
+  @media(max-width:560px){ .two,.cats{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <div class="top"><div class="in">
+    <img id="logo" src="logo.png" alt="خذ بيدي" />
+    <div><b>تقديم طلب رعاية فعالية</b><small>مشروع خذ بيدي — ثلث المرحوم عبدالله عبداللطيف العثمان</small></div>
+  </div></div>
+
+  <div class="wrap">
+    <div class="steps">
+      <div class="stp on" data-s="0"><span class="d">1</span> الشروط والأحكام</div>
+      <div class="stp" data-s="1"><span class="d">2</span> بيانات الفعالية</div>
+      <div class="stp" data-s="2"><span class="d">3</span> القاعة والمرفقات</div>
+    </div>
+
+    <!-- خطوة الشروط -->
+    <form id="step0" class="card">
+      <h2>الشروط والأحكام المطلوب اتّباعها لطلب الرعاية</h2>
+      <p class="sub">يُرجى قراءة البنود بعناية. الموافقة عليها شرط أساسي لتقديم الطلب.</p>
+      <div id="terms"></div>
+      <div class="agree" id="agree"><div class="cbx" id="cbx"></div><span>أقرّ بأنني اطّلعت على جميع الشروط والأحكام أعلاه وأوافق على الالتزام بها.</span></div>
+      <div class="err" id="agreeErr" style="display:none">يجب الموافقة على الشروط للمتابعة.</div>
+      <div class="nav"><span></span><button type="button" class="submit" style="width:auto" id="to1">التالي ←</button></div>
+    </form>
+
+    <!-- خطوة بيانات الفعالية -->
+    <form id="step1" class="card state-hidden">
+      <h2>بيانات الفعالية</h2>
+      <div class="two">
+        <div><label>اسم الفعالية <span class="req">*</span></label><input id="event" /><div class="err" id="e_event"></div></div>
+        <div><label>الجهة الطالبة <span class="req">*</span></label><input id="org" /><div class="err" id="e_org"></div></div>
+      </div>
+      <label>أهداف الفعالية <span class="req">*</span></label><textarea id="goals"></textarea><div class="err" id="e_goals"></div>
+      <label>محاور الفعالية <span class="req">*</span></label><textarea id="axes"></textarea><div class="err" id="e_axes"></div>
+      <label>الفئة المستهدفة <span class="req">*</span> <small>يمكن اختيار أكثر من فئة</small></label>
+      <div class="cats" id="cats"></div><div class="err" id="e_cats"></div>
+      <div class="nav"><button type="button" class="ghost" data-back="0">السابق</button><button type="button" class="submit" style="width:auto" id="to2">التالي ←</button></div>
+    </form>
+
+    <!-- خطوة القاعة والمرفقات -->
+    <form id="step2" class="card state-hidden">
+      <h2>القاعة والموعد ووسائل التواصل</h2>
+      <div class="two">
+        <div><label>القاعة المطلوبة <span class="req">*</span></label><select id="hall"><option value="">اختر القاعة…</option></select><div class="err" id="e_hall"></div></div>
+        <div><label>اسم المحاضر <span class="req">*</span></label><input id="lecturer" /><div class="err" id="e_lecturer"></div></div>
+      </div>
+      <div class="two">
+        <div><label>التواريخ المقترحة <span class="req">*</span></label><input id="dates" placeholder="مثال: ٢١ يونيو ٢٠٢٦" /><div class="err" id="e_dates"></div></div>
+        <div><label>رقم الهاتف <span class="req">*</span></label><input id="phone" class="ltr" placeholder="+965 ____ ____" /><div class="err" id="e_phone"></div></div>
+      </div>
+      <label>حساب الإنستقرام <span class="req">*</span></label><input id="insta" class="ltr" placeholder="@username" /><div class="err" id="e_insta"></div>
+      <div class="two">
+        <div>
+          <label>طلب رعاية فعالية (موقّع) <span class="req">*</span></label>
+          <input type="file" id="fReq" accept=".pdf,.doc,.docx,image/*" style="display:none" />
+          <div class="drop" id="dReq"><b>اضغط لرفع الملف</b><span>موقّع من الجهة الطالبة · PDF</span></div>
+        </div>
+        <div>
+          <label>السيرة الذاتية للمحاضر <span class="req">*</span></label>
+          <input type="file" id="fCv" accept=".pdf,.doc,.docx,image/*" style="display:none" />
+          <div class="drop" id="dCv"><b>اضغط لرفع الملف</b><span>PDF أو صورة</span></div>
+        </div>
+      </div>
+      <label>ملاحظات <small>اختياري</small></label><textarea id="notes"></textarea>
+      <div class="nav"><button type="button" class="ghost" data-back="1">السابق</button><button type="button" class="submit" style="width:auto" id="send">إرسال الطلب</button></div>
+      <div class="errbox" id="sendErr"></div>
+    </form>
+
+    <!-- نجاح -->
+    <div id="success" class="card done state-hidden">
+      <div class="seal">✓</div>
+      <h1>تم استلام طلبك بنجاح</h1>
+      <p class="sub">شكراً لك. سيقوم فريق مشروع «خذ بيدي» بمراجعة طلبك والتواصل معك. احتفظ برقم الطلب لمتابعته.</p>
+      <div class="ref" id="refChip"></div>
+      <div><button type="button" class="ghost" id="again">تقديم طلب آخر</button></div>
+    </div>
+  </div>
+
+  <script src="logo-data.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    if (window.BK_LOGO) document.getElementById('logo').src = window.BK_LOGO;
+    const $ = (id) => document.getElementById(id);
+
+    const TERMS = [
+      'عدم إلحاق أي ضرر بالمرافق أو المعدات داخل القاعة، وفي حال حدوثه يتحمّل العميل المسؤولية الكاملة.',
+      'احترام المواعيد المحدّدة للبدء والانتهاء من المحاضرة ومن حجز القاعة.',
+      'يمكن تغيير موعد الحجز مرّة واحدة فقط قبل ٧٢ ساعة من موعد المحاضرة، في حال توفّر القاعة.',
+      'وضع شعار المشروع على التصميم، مع عمل منشن لحساب المشروع @beyadikw.',
+      'تزويد الجهة الراعية بصور عالية الجودة من الفعالية.',
+      'تزويد الجهة الراعية بفيديو قصير (إن وُجد) عالي الجودة من الفعالية.',
+    ];
+    $('terms').innerHTML = TERMS.map((t, i) => `<div class="term"><span class="n">${i + 1}</span><span class="tx">${t}</span></div>`).join('');
+
+    let agree = false;
+    $('agree').addEventListener('click', () => { agree = !agree; $('cbx').classList.toggle('on', agree); $('agreeErr').style.display = 'none'; });
+
+    // الفئات والقاعات من الخادم
+    let cats = [];
+    const selectedCats = new Set();
+    (async () => {
+      try {
+        const m = await API.meta();
+        $('cats').innerHTML = m.categories.map(c => `<div class="cat" data-id="${c.id}"><span class="mk"></span>${c.name}</div>`).join('');
+        $('cats').querySelectorAll('.cat').forEach(el => el.addEventListener('click', () => {
+          const id = el.dataset.id;
+          if (selectedCats.has(id)) { selectedCats.delete(id); el.classList.remove('on'); }
+          else { selectedCats.add(id); el.classList.add('on'); }
+        }));
+        m.halls.forEach(h => { const o = document.createElement('option'); o.value = h.id; o.textContent = h.name + (h.note ? ` — ${h.note}` : ''); $('hall').appendChild(o); });
+      } catch (e) {
+        $('cats').innerHTML = '<div class="err">تعذّر تحميل البيانات من الخادم. حدّث الصفحة.</div>';
+      }
+    })();
+
+    // رفع الملفات
+    let fileReq = null, fileCv = null;
+    function wireDrop(dropId, inputId, set) {
+      $(dropId).addEventListener('click', () => $(inputId).click());
+      $(inputId).addEventListener('change', e => {
+        const f = e.target.files[0]; if (!f) return; set(f);
+        $(dropId).classList.add('on');
+        $(dropId).innerHTML = `<b>${f.name}</b><span>تم الرفع · اضغط للتبديل</span>`;
+      });
+    }
+    wireDrop('dReq', 'fReq', f => fileReq = f);
+    wireDrop('dCv', 'fCv', f => fileCv = f);
+
+    // التنقّل بين الخطوات
+    function show(step) {
+      [0, 1, 2].forEach(i => $('step' + i).classList.toggle('state-hidden', i !== step));
+      document.querySelectorAll('.stp').forEach(el => {
+        const s = Number(el.dataset.s);
+        el.classList.toggle('ok', s < step);
+        el.classList.toggle('on', s === step);
+      });
+      window.scrollTo({ top: 0 });
+    }
+    document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => show(Number(b.dataset.back))));
+
+    $('to1').addEventListener('click', () => {
+      if (!agree) { $('agreeErr').style.display = 'block'; return; }
+      show(1);
+    });
+
+    function req(id, msg) {
+      const v = $(id).value.trim();
+      $('e_' + id).textContent = v ? '' : (msg || 'مطلوب');
+      return !!v;
+    }
+    $('to2').addEventListener('click', () => {
+      let ok = ['event', 'org', 'goals', 'axes'].map(id => req(id)).every(Boolean);
+      if (selectedCats.size === 0) { $('e_cats').textContent = 'اختر فئة واحدة على الأقل'; ok = false; } else $('e_cats').textContent = '';
+      if (ok) show(2);
+    });
+
+    $('send').addEventListener('click', async () => {
+      const errBox = $('sendErr'); errBox.style.display = 'none';
+      let ok = ['hall', 'lecturer', 'dates', 'phone', 'insta'].map(id => req(id)).every(Boolean);
+      if (!fileReq) { $('e_event'); ok = false; }
+      if (!ok || !fileReq || !fileCv) {
+        errBox.textContent = !fileReq || !fileCv ? 'يلزم إرفاق الطلب الموقّع والسيرة الذاتية، وإكمال الحقول المطلوبة.' : 'أكمل الحقول المطلوبة.';
+        errBox.style.display = 'block'; return;
+      }
+      const btn = $('send'); btn.disabled = true; btn.textContent = 'جارٍ الإرسال…';
+      try {
+        const created = await API.requests.create({
+          event: $('event').value.trim(), org: $('org').value.trim(), lecturer: $('lecturer').value.trim(),
+          hall: $('hall').value, phone: $('phone').value.trim(), insta: $('insta').value.trim(),
+          dates: $('dates').value.trim(), goals: $('goals').value.trim(), axes: $('axes').value.trim(),
+          notes: $('notes').value.trim(), cats: [...selectedCats], agree: 'true',
+        }, { requestDoc: fileReq, cv: fileCv });
+        $('refChip').textContent = 'رقم الطلب: ' + created.id;
+        ['step0', 'step1', 'step2'].forEach(s => $(s).classList.add('state-hidden'));
+        document.querySelector('.steps').style.display = 'none';
+        $('success').classList.remove('state-hidden');
+        window.scrollTo({ top: 0 });
+      } catch (e) {
+        errBox.textContent = 'تعذّر إرسال الطلب: ' + e.message; errBox.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'إرسال الطلب';
+      }
+    });
+
+    $('again').addEventListener('click', () => location.reload());
+  </script>
+</body>
+</html>

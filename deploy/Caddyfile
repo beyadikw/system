@@ -1,0 +1,27 @@
+# ============================================================
+#  Caddy — أسهل طريق لـ HTTPS تلقائي (شهادة Let's Encrypt مجاناً)
+#  ضع هذا الملف باسم Caddyfile على الخادم وشغّل:  caddy run
+#  استبدل beyadik.kw بنطاقك، ووجّه DNS النطاق إلى عنوان خادمك أولاً.
+# ============================================================
+
+beyadik.kw {
+    # Caddy يصدر ويجدّد شهادة HTTPS تلقائياً
+    encode gzip
+
+    # تمرير الطلبات إلى تطبيق Node على المنفذ 4000
+    reverse_proxy localhost:4000
+
+    # ترويسات أمان أساسية
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
+
+# www → بدون www (اختياري)
+www.beyadik.kw {
+    redir https://beyadik.kw{uri} permanent
+}
