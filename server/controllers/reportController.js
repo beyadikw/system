@@ -1,0 +1,99 @@
+'use strict';
+/** متحكّم التقارير الختامية */
+const { q, withTx } = require('../config/db');
+const { hydrateRequest } = require('./helpers');
+const { sendMail, templates } = require('../services/email');
+
+/** يحفظ/يحدّث تقريراً ويربط صوره */
+async function saveReport({ requestId, body, files, source }) {
+  const reqRows = await q(`SELECT r.*, h.capacity AS hall_capacity FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.id=?`, [requestId]);
+  if (!reqRows[0]) { const e = new Error('الطلب غير موجود'); e.status = 404; throw e; }
+  const capacity = Number(body.capacity) || reqRows[0].hall_capacity || 0;
+
+  await withTx(async (conn) => {
+    await conn.execute(
+      `INSERT INTO reports (request_id, attendees, capacity, has_video, summary, outcomes, notes, source)
+       VALUES (?,?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE attendees=VALUES(attendees), capacity=VALUES(capacity),
+         has_video=VALUES(has_video), summary=VALUES(summary), outcomes=VALUES(outcomes),
+         notes=VALUES(notes), source=VALUES(source)`,
+      [requestId, Number(body.attendees) || 0, capacity, body.video === 'true' || body.video === true ? 1 : 0,
+       body.summary || null, body.outcomes || null, body.notes || null, source]
+    );
+    // صور التقرير
+    const photos = (files && files.photos) || [];
+    if (photos.length) {
+      const existing = await conn.execute(`SELECT COUNT(*) c FROM attachments WHERE request_id=? AND kind='photo'`, [requestId]);
+      let sort = existing[0][0].c;
+      for (const p of photos) {
+        await conn.execute(
+          `INSERT INTO attachments (request_id, kind, file_name, stored_path, mime_type, size_bytes, sort)
+           VALUES (?, 'photo', ?,?,?,?,?)`,
+          [requestId, p.originalname, p.filename, p.mimetype, p.size, sort++]
+        );
+      }
+    }
+  });
+  return hydrateRequest(requestId);
+}
+
+/** GET /api/reports — الطلبات المعتمدة (مع/بدون تقرير) */
+exports.list = async (req, res, next) => {
+  try {
+    const rows = await q(
+      `SELECT r.id, r.event_name, r.organization, r.lecturer, r.hall_id, h.name AS hall_name,
+              h.capacity AS hall_capacity, r.proposed_dates,
+              rep.attendees, rep.capacity, rep.has_video,
+              (rep.id IS NOT NULL) AS has_report,
+              (SELECT COUNT(*) FROM attachments a WHERE a.request_id=r.id AND a.kind='photo') AS photo_count
+       FROM requests r LEFT JOIN halls h ON h.id=r.hall_id
+       LEFT JOIN reports rep ON rep.request_id=r.id
+       WHERE r.status='approved' ORDER BY r.submitted_at DESC`
+    );
+    rows.forEach(x => { x.has_report = !!x.has_report; });
+    res.json(rows);
+  } catch (e) { next(e); }
+};
+
+/** GET /api/reports/:requestId */
+exports.getOne = async (req, res, next) => {
+  try {
+    const full = await hydrateRequest(req.params.requestId);
+    if (!full) return res.status(404).json({ error: 'الطلب غير موجود' });
+    res.json(full);
+  } catch (e) { next(e); }
+};
+
+/** POST /api/reports/:requestId  (داخلي — يتطلّب مصادقة) */
+exports.create = async (req, res, next) => {
+  try {
+    const full = await saveReport({ requestId: req.params.requestId, body: req.body, files: req.files, source: 'internal' });
+    res.status(201).json(full);
+  } catch (e) { next(e); }
+};
+
+/** GET /api/share/:token — معاينة بيانات الفعالية للجهة المنفّذة (عام) */
+exports.getByToken = async (req, res, next) => {
+  try {
+    const rows = await q(
+      `SELECT r.id, r.event_name, r.organization, r.lecturer, r.hall_id, h.name AS hall_name,
+              h.capacity AS hall_capacity, r.proposed_dates, r.goals, r.axes
+       FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.share_token=?`, [req.params.token]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'الرابط غير صالح' });
+    res.json(rows[0]);
+  } catch (e) { next(e); }
+};
+
+/** POST /api/share/:token — رفع التقرير من الجهة المنفّذة (عام) */
+exports.submitByToken = async (req, res, next) => {
+  try {
+    const rows = await q(`SELECT id FROM requests WHERE share_token=?`, [req.params.token]);
+    if (!rows[0]) return res.status(404).json({ error: 'الرابط غير صالح' });
+    const full = await saveReport({ requestId: rows[0].id, body: req.body, files: req.files, source: 'executor' });
+    // إشعار الفريق باستلام التقرير
+    const tpl = templates.reportReceived(full);
+    sendMail({ to: process.env.ADMIN_NOTIFY_EMAIL, ...tpl, template: 'reportReceived', requestId: full.id }).catch(() => {});
+    res.status(201).json({ ok: true, id: full.id });
+  } catch (e) { next(e); }
+};
