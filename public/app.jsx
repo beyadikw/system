@@ -74,6 +74,8 @@ function App() {
   });
   const [notifOpen, setNotifOpen] = useStateA(false);
   const bellRef = useRefA(null);
+  const seenIds = useRefA(null);   // مجموعة أرقام الطلبات المعروفة (للوضع الحيّ)
+  const firstLoad = useRefA(true);
 
   const unread = notifs.filter(n => !n.read).length;
 
@@ -87,19 +89,53 @@ function App() {
     if (!LIVE) return;
     try { setRequests(await window.Store.loadRequests()); } catch (e) { showToast('تعذّر تحميل الطلبات: ' + e.message); }
   }
+
+  // يفحص الطلبات الواردة ويولّد إشعارات للطلبات الجديدة (الوضع الحيّ)
+  function syncNotifs(list) {
+    if (!seenIds.current) seenIds.current = new Set();
+    if (firstLoad.current) {
+      // أول تحميل: أنشئ إشعارات لما ينتظر المراجعة (دون إزعاج بإشعار لكل طلب قديم)
+      const seedList = [];
+      list.filter(r => r.status === 'review').forEach(r =>
+        seedList.push({ ...makeNotif('new', 'طلب بانتظار المراجعة', r.event, r.id), time: 'بانتظارك' }));
+      list.filter(r => r.status === 'approved' && !r.report).forEach(r =>
+        seedList.push({ ...makeNotif('approved', 'فعالية معتمدة بانتظار التقرير', r.event, r.id), read: true, time: '' }));
+      if (seedList.length) setNotifs(seedList);
+      list.forEach(r => seenIds.current.add(r.id));
+      firstLoad.current = false;
+      return;
+    }
+    // التحديثات اللاحقة: نبّه على كل طلب جديد لم نره من قبل
+    const fresh = list.filter(r => !seenIds.current.has(r.id));
+    fresh.forEach(r => {
+      seenIds.current.add(r.id);
+      pushNotif(makeNotif('new', 'طلب رعاية جديد ورد الآن', r.event, r.id));
+    });
+    if (fresh.length) showToast(`ورد ${fresh.length === 1 ? 'طلب جديد' : fresh.length + ' طلبات جديدة'}`);
+  }
+
   useEffectA(() => {
     if (!LIVE) return;
     if (!window.API.isAuthed()) { location.href = 'login.html'; return; }
-    (async () => {
+    let timer = null;
+    async function load(initial) {
       try {
-        await window.Store.loadMeta();
-        await window.Store.loadTimeseries();
-        setRequests(await window.Store.loadRequests());
+        if (initial) { await window.Store.loadMeta(); await window.Store.loadTimeseries(); }
+        const list = await window.Store.loadRequests();
+        setRequests(list);
+        syncNotifs(list);
       } catch (e) {
         if (/جلسة|تسجيل/.test(e.message)) { window.API.logout(); location.href = 'login.html'; return; }
-        showToast('تعذّر الاتصال بالخادم: ' + e.message);
-      } finally { setLoading(false); }
-    })();
+        if (initial) showToast('تعذّر الاتصال بالخادم: ' + e.message);
+      } finally { if (initial) setLoading(false); }
+    }
+    load(true);
+    // تفقّد دوري للطلبات الجديدة كل ٤٥ ثانية
+    timer = setInterval(() => load(false), 45000);
+    // تفقّد فوري عند العودة إلى التبويب
+    const onFocus = () => load(false);
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(timer); window.removeEventListener('focus', onFocus); };
   }, []);
 
   function updateStatus(id, status) {
@@ -120,6 +156,7 @@ function App() {
   }
   function submitNew(req) {
     if (!LIVE) setRequests(prev => [{ ...req, status: 'review' }, ...prev]);
+    else if (seenIds.current && req && req.id) seenIds.current.add(req.id); // لا تُنبّه عليه ثانيةً
     pushNotif(makeNotif('new', 'طلب رعاية جديد', req.event, req.id));
     showToast(`تم استلام طلب «${req.event}»`);
     if (LIVE) refreshRequests();
@@ -166,6 +203,16 @@ function App() {
   const reviewCount = requests.filter(r => r.status === 'review').length;
   const pendingReports = requests.filter(r => r.status === 'approved' && !r.report).length;
   const meta = PAGE_META[screen];
+  const todayStr = (() => {
+    try {
+      const f = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const p = f.formatToParts(new Date());
+      const g = (t) => (p.find(x => x.type === t) || {}).value || '';
+      return `${g('weekday')} · ${g('day')} ${g('month')} ${g('year')}`;
+    } catch (e) {
+      return new Date().toLocaleDateString('ar');
+    }
+  })();
 
   return (
     <div className="app">
@@ -191,7 +238,7 @@ function App() {
         <header className="topbar">
           <div className="pg-tt"><b>{meta.t}</b><small>{meta.s}</small></div>
           <div className="sp"></div>
-          <div className="tdate"><Icon name="calendar" tone="gold" size={18} />الأربعاء · ١٠ يونيو ٢٠٢٦</div>
+          <div className="tdate"><Icon name="calendar" tone="gold" size={18} />{todayStr}</div>
           <div className="notif-wrap" ref={bellRef}>
             <button className={`icon-btn ${notifOpen ? 'active' : ''}`} onClick={() => setNotifOpen(o => !o)} aria-label="الإشعارات">
               <Icon name="bell" tone="gold" />
