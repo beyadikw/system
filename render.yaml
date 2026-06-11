@@ -1,0 +1,49 @@
+# ============================================================
+#  Render Blueprint — نشر تلقائي على الاستضافة المجانية
+#  ضع هذا الملف في جذر المستودع، واربط المستودع بـ Render
+#  ثم أدخل بيانات قاعدة البيانات (Aiven) في متغيّرات البيئة.
+# ============================================================
+services:
+  - type: web
+    name: khudh-biyadi
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # تهيئة الجداول تلقائياً عند أول تشغيل
+      - key: AUTO_INIT
+        value: "true"
+      - key: AUTO_SEED
+        value: "true"
+      # إعدادات قاعدة بيانات سحابية (Aiven): قاعدة جاهزة + SSL
+      - key: DB_CREATE
+        value: "false"
+      - key: DB_SSL
+        value: "true"
+      # سرّ JWT يولّده Render عشوائياً (آمن)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+      # أدخل هذه القيم يدوياً من لوحة Render (من بيانات Aiven)
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      # بريد أولي (اختياري — اتركه فارغاً ليُسجّل في السجل بدل الإرسال)
+      - key: SEED_COORDINATOR_PASSWORD
+        sync: false
