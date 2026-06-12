@@ -48,6 +48,28 @@ async function boot() {
       console.error('✖ فشلت التهيئة التلقائية:', e.message);
     }
   }
+  // إعادة ضبط كلمة مرور المنسّق إجبارياً عند الإقلاع (حلّ نهائي مضمون):
+  // اضبط RESET_COORDINATOR_PASSWORD=كلمتك في بيئة الخادم، أعد النشر، ثم احذف المتغيّر.
+  const resetPass = process.env.RESET_COORDINATOR_PASSWORD;
+  if (resetPass && resetPass.trim()) {
+    try {
+      const bcrypt = require('bcryptjs');
+      const { q } = require('./config/db');
+      const email = process.env.RESET_COORDINATOR_EMAIL || 'coordinator@beyadik.kw';
+      const hash = await bcrypt.hash(resetPass.trim(), 10);
+      const rows = await q('SELECT id FROM users WHERE email = ?', [email]);
+      if (rows[0]) {
+        await q('UPDATE users SET password_hash = ? WHERE email = ?', [hash, email]);
+      } else {
+        await q('INSERT INTO users (name, email, password_hash, role) VALUES (?,?,?,?)',
+          ['ماجد الشمري', email, hash, 'coordinator']);
+      }
+      console.log(`🔑 تم ضبط كلمة مرور المستخدم ${email} من RESET_COORDINATOR_PASSWORD.`);
+      console.log('   ⚠️ احذف المتغيّر RESET_COORDINATOR_PASSWORD بعد التأكد من الدخول.');
+    } catch (e) {
+      console.error('✖ تعذّر ضبط كلمة المرور:', e.message);
+    }
+  }
   app.listen(PORT, () => {
     console.log(`\n🚀 خادم خذ بيدي يعمل على المنفذ ${PORT}`);
     console.log(`   الواجهة:   http://localhost:${PORT}`);
