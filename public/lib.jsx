@@ -263,12 +263,23 @@ function requestDocHTML(req) {
 </div></body></html>`;
 }
 
-function downloadAttachment(req, which) {
+/** يجلب الملف من رابطه (الوضع الحيّ) ويعيده Blob، أو يعيد الـ Blob/File كما هو (الوضع التجريبي) */
+async function resolveFileBlob(f) {
+  if (!f) return null;
+  if (f instanceof Blob) return f;            // ملف مرفوع محلياً (File/Blob)
+  if (f.url) {                                 // مرفوع على الخادم — نجلبه برابطه
+    try { const res = await fetch(f.url); if (res.ok) return await res.blob(); } catch (e) {}
+  }
+  return null;
+}
+
+async function downloadAttachment(req, which) {
   const f = req.files && req.files[which];
-  if (f) { triggerDownload(f, f.name); return; }
+  const blob = await resolveFileBlob(f);
+  if (blob) { triggerDownload(blob, (f && f.name) || `${which}-${req.id}`); return; }
   const txt = which === 'request' ? 'ملف طلب الرعاية الموقّع من الجهة الطالبة' : 'السيرة الذاتية للمحاضر';
   const nm = which === 'request' ? 'طلب-رعاية-موقّع' : 'السيرة-الذاتية-للمحاضر';
-  triggerDownload(new Blob(['\ufeff(نسخة تجريبية) — ' + txt + ' للطلب ' + req.id], { type: 'text/plain;charset=utf-8' }), `${nm}-${req.id}.txt`);
+  triggerDownload(new Blob(['\ufeff(لا يوجد ملف مرفوع) — ' + txt + ' للطلب ' + req.id], { type: 'text/plain;charset=utf-8' }), `${nm}-${req.id}.txt`);
 }
 
 async function downloadRequestPackage(req) {
@@ -280,10 +291,12 @@ async function downloadRequestPackage(req) {
   const zip = new window.JSZip();
   zip.file(`نموذج-الطلب-${req.id}.html`, docHtml);
   const att = zip.folder('المرفقات');
-  if (req.files && req.files.request) att.file(req.files.request.name, req.files.request);
-  else att.file(`طلب-رعاية-موقّع-${req.id}.txt`, '\ufeff(نسخة تجريبية) — يُرفق هنا ملف طلب الرعاية الموقّع من الجهة الطالبة.');
-  if (req.files && req.files.cv) att.file(req.files.cv.name, req.files.cv);
-  else att.file(`السيرة-الذاتية-للمحاضر-${req.id}.txt`, '\ufeff(نسخة تجريبية) — تُرفق هنا السيرة الذاتية للمحاضر.');
+  const reqBlob = await resolveFileBlob(req.files && req.files.request);
+  if (reqBlob) att.file((req.files.request.name) || `طلب-رعاية-موقّع-${req.id}`, reqBlob);
+  else att.file(`طلب-رعاية-موقّع-${req.id}.txt`, '\ufeff(لا يوجد ملف مرفوع) — يُرفق هنا ملف طلب الرعاية الموقّع من الجهة الطالبة.');
+  const cvBlob = await resolveFileBlob(req.files && req.files.cv);
+  if (cvBlob) att.file((req.files.cv.name) || `السيرة-الذاتية-${req.id}`, cvBlob);
+  else att.file(`السيرة-الذاتية-للمحاضر-${req.id}.txt`, '\ufeff(لا يوجد ملف مرفوع) — تُرفق هنا السيرة الذاتية للمحاضر.');
   const blob = await zip.generateAsync({ type: 'blob' });
   triggerDownload(blob, `طلب-رعاية-${req.id}.zip`);
 }

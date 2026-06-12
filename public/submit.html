@@ -164,20 +164,30 @@
     // الفئات والقاعات من الخادم
     let cats = [];
     const selectedCats = new Set();
-    (async () => {
+    let metaLoaded = false;
+    $('cats').innerHTML = '<div style="grid-column:1/-1;color:#9a9388;font-size:13px;padding:6px 2px">جارٍ تحميل الفئات من الخادم…</div>';
+    async function loadMeta(attempt) {
       try {
         const m = await API.meta();
+        if (!m || !m.categories || !m.categories.length) throw new Error('لا توجد فئات');
         $('cats').innerHTML = m.categories.map(c => `<div class="cat" data-id="${c.id}"><span class="mk"></span>${c.name}</div>`).join('');
         $('cats').querySelectorAll('.cat').forEach(el => el.addEventListener('click', () => {
           const id = el.dataset.id;
           if (selectedCats.has(id)) { selectedCats.delete(id); el.classList.remove('on'); }
           else { selectedCats.add(id); el.classList.add('on'); }
         }));
+        // أعد ضبط قائمة القاعات
+        $('hall').innerHTML = '<option value="">اختر القاعة…</option>';
         m.halls.forEach(h => { const o = document.createElement('option'); o.value = h.id; o.textContent = h.name + (h.note ? ` — ${h.note}` : ''); $('hall').appendChild(o); });
+        metaLoaded = true;
       } catch (e) {
-        $('cats').innerHTML = '<div class="err">تعذّر تحميل البيانات من الخادم. حدّث الصفحة.</div>';
+        // الخادم المجاني قد يكون نائماً — أعد المحاولة تلقائياً حتى دقيقة
+        if ((attempt || 0) < 8) { setTimeout(() => loadMeta((attempt || 0) + 1), 8000); return; }
+        $('cats').innerHTML = '<div style="grid-column:1/-1;color:#CA483A;font-size:13px;padding:6px 2px">تعذّر تحميل الفئات. <button type="button" id="retryMeta" style="border:none;background:#F4ECD9;color:#997633;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit">إعادة المحاولة</button></div>';
+        const rb = document.getElementById('retryMeta'); if (rb) rb.addEventListener('click', () => { $('cats').innerHTML = '<div style="grid-column:1/-1;color:#9a9388;font-size:13px;padding:6px 2px">جارٍ التحميل…</div>'; loadMeta(0); });
       }
-    })();
+    }
+    loadMeta(0);
 
     // رفع الملفات
     let fileReq = null, fileCv = null;
