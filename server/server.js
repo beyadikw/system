@@ -48,6 +48,13 @@ async function boot() {
       console.error('✖ فشلت التهيئة التلقائية:', e.message);
     }
   }
+  // ترحيل تلقائي آمن عند كل إقلاع: يضيف أي عمود ناقص (مثل status) لقاعدة قائمة
+  try {
+    const { migrate } = require('./db/initDb');
+    await migrate();
+  } catch (e) {
+    console.error('• تخطّي الترحيل:', e.message);
+  }
   // إعادة ضبط كلمة مرور المنسّق إجبارياً عند الإقلاع (حلّ نهائي مضمون):
   // اضبط RESET_COORDINATOR_PASSWORD=كلمتك في بيئة الخادم، أعد النشر، ثم احذف المتغيّر.
   const resetPass = process.env.RESET_COORDINATOR_PASSWORD;

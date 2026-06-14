@@ -66,4 +66,33 @@ async function initDb({ seed = false, log = console.log } = {}) {
   }
 }
 
-module.exports = { initDb, sslOption };
+module.exports = { initDb, sslOption, migrate };
+
+/**
+ * ترحيل خفيف وآمن (idempotent) — يضيف الأعمدة الناقصة إلى جداول موجودة.
+ * يُستدعى عند كل إقلاع للخادم، ولا يؤثّر إن كانت الأعمدة موجودة.
+ */
+async function migrate({ log = console.log } = {}) {
+  const dbName = process.env.DB_NAME || 'khudh_biyadi';
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: dbName,
+    ssl: sslOption(),
+  });
+  try {
+    const [rows] = await conn.query(
+      `SELECT COUNT(*) AS c FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'reports' AND COLUMN_NAME = 'status'`,
+      [dbName]
+    );
+    if (rows[0] && rows[0].c === 0) {
+      await conn.query(`ALTER TABLE \`reports\` ADD COLUMN status ENUM('pending','accepted') NOT NULL DEFAULT 'accepted'`);
+      log('✔ ترحيل: أُضيف عمود status إلى جدول reports');
+    }
+  } finally {
+    await conn.end();
+  }
+}
