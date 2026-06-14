@@ -11,8 +11,10 @@
   /* ----- تحويل طلب من شكل الخادم إلى شكل الواجهة ----- */
   function normalizeRequest(r) {
     if (!r) return null;
+    const base = window.API_BASE || '';   // عنوان الخادم (مطلوب عند الفتح من GitHub Pages)
+    const fileUrl = (p) => `${base}/uploads/${p}`;
     const photos = (r.report_photos || r.attachments && r.attachments.filter(a => a.kind === 'photo') || [])
-      .map(p => p.stored_path ? `/uploads/${p.stored_path}` : null).filter(Boolean);
+      .map(p => p.stored_path ? fileUrl(p.stored_path) : null).filter(Boolean);
     const atts = r.attachments || [];
     const findAtt = (kind) => atts.find(a => a.kind === kind);
     const reqDoc = findAtt('request_doc');
@@ -48,8 +50,8 @@
         pending: (r.report.status || 'accepted') === 'pending',
       } : null,
       files: {
-        request: reqDoc ? { name: reqDoc.file_name, url: `/uploads/${reqDoc.stored_path}` } : null,
-        cv: cv ? { name: cv.file_name, url: `/uploads/${cv.stored_path}` } : null,
+        request: reqDoc ? { name: reqDoc.file_name, url: fileUrl(reqDoc.stored_path) } : null,
+        cv: cv ? { name: cv.file_name, url: fileUrl(cv.stored_path) } : null,
       },
       _photoNames: photos,
     };
