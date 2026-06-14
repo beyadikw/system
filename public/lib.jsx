@@ -397,9 +397,39 @@ function printHTML(html) {
   ifr.onload = () => { setTimeout(go, 300); setTimeout(() => ifr.remove(), 60000); };
   setTimeout(go, 700);
 }
+
+/** اسم ملف آمن من اسم الفعالية */
+function safeFileName(s) {
+  return String(s || 'تقرير').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+/** يحوّل رابط صورة إلى Data URL (لتضمينها في ملف Word بحيث تظهر دون إنترنت) */
+async function imgToDataURL(url) {
+  if (!url || /^data:/i.test(url)) return url;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => resolve(url);
+      fr.readAsDataURL(blob);
+    });
+  } catch (e) { return url; }
+}
+
+/** نسخة من الطلب بصور مُضمَّنة (Data URLs) — تُستخدم لملف Word */
+async function reqWithEmbeddedImages(req) {
+  const rep = req.report || {};
+  const photos = await Promise.all((rep.photoData || []).map(imgToDataURL));
+  return { ...req, report: { ...rep, photoData: photos } };
+}
+
 function downloadReportPDF(req) { printHTML(reportDocHTML(req)); }
-function downloadReportWord(req) {
-  triggerDownload(new Blob(['\ufeff' + reportDocHTML(req)], { type: 'application/msword' }), `تقرير-${req.id}.doc`);
+
+async function downloadReportWord(req) {
+  const embedded = await reqWithEmbeddedImages(req);   // ضمّن الصور لتظهر في Word
+  triggerDownload(new Blob(['\ufeff' + reportDocHTML(embedded)], { type: 'application/msword' }), `تقرير - ${safeFileName(req.event)}.doc`);
 }
 
 Object.assign(window, { Icon, IconPlate, StatusPill, Kpi, Donut, DonutWithLegend, Bars, AreaLine, Spark, hallName, catName, triggerDownload, requestDocHTML, downloadAttachment, downloadRequestPackage, reportDocHTML, printHTML, downloadReportPDF, downloadReportWord });

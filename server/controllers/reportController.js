@@ -11,6 +11,12 @@ async function saveReport({ requestId, body, files, source, status }) {
   const capacity = Number(body.capacity) || reqRows[0].hall_capacity || 0;
   const st = status || 'accepted';
 
+  // ارفع صور التقرير أولاً (Cloudinary/القرص) قبل المعاملة
+  const { persist } = require('../services/storage');
+  const photoFiles = (files && files.photos) || [];
+  const photoStored = [];
+  for (const p of photoFiles) photoStored.push({ f: p, url: await persist(p) });
+
   await withTx(async (conn) => {
     await conn.execute(
       `INSERT INTO reports (request_id, attendees, capacity, has_video, summary, outcomes, notes, source, status)
@@ -22,15 +28,14 @@ async function saveReport({ requestId, body, files, source, status }) {
        body.summary || null, body.outcomes || null, body.notes || null, source, st]
     );
     // صور التقرير
-    const photos = (files && files.photos) || [];
-    if (photos.length) {
+    if (photoStored.length) {
       const existing = await conn.execute(`SELECT COUNT(*) c FROM attachments WHERE request_id=? AND kind='photo'`, [requestId]);
       let sort = existing[0][0].c;
-      for (const p of photos) {
+      for (const p of photoStored) {
         await conn.execute(
           `INSERT INTO attachments (request_id, kind, file_name, stored_path, mime_type, size_bytes, sort)
            VALUES (?, 'photo', ?,?,?,?,?)`,
-          [requestId, p.originalname, p.filename, p.mimetype, p.size, sort++]
+          [requestId, p.f.originalname, p.url, p.f.mimetype, p.f.size, sort++]
         );
       }
     }

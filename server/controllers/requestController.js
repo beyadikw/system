@@ -46,6 +46,12 @@ exports.create = async (req, res, next) => {
     const insta = b.insta.startsWith('@') ? b.insta : '@' + b.insta;
     const today = new Date().toISOString().slice(0, 10);
     const files = req.files || {};
+    const { persist } = require('../services/storage');
+    // ارفع الملفات أولاً (إلى Cloudinary أو القرص) قبل المعاملة
+    const reqDocFile = files.requestDoc ? files.requestDoc[0] : null;
+    const cvFile = files.cv ? files.cv[0] : null;
+    const reqDocStored = reqDocFile ? await persist(reqDocFile) : null;
+    const cvStored = cvFile ? await persist(cvFile) : null;
 
     await withTx(async (conn) => {
       await conn.execute(
@@ -58,16 +64,16 @@ exports.create = async (req, res, next) => {
       for (const c of cats) {
         await conn.execute(`INSERT IGNORE INTO request_categories (request_id, category_id) VALUES (?,?)`, [id, c]);
       }
-      const addFile = async (kind, f) => {
+      const addFile = async (kind, f, stored) => {
         if (!f) return;
         await conn.execute(
           `INSERT INTO attachments (request_id, kind, file_name, stored_path, mime_type, size_bytes)
            VALUES (?,?,?,?,?,?)`,
-          [id, kind, f.originalname, f.filename, f.mimetype, f.size]
+          [id, kind, f.originalname, stored, f.mimetype, f.size]
         );
       };
-      if (files.requestDoc) await addFile('request_doc', files.requestDoc[0]);
-      if (files.cv) await addFile('cv', files.cv[0]);
+      await addFile('request_doc', reqDocFile, reqDocStored);
+      await addFile('cv', cvFile, cvStored);
     });
 
     const full = await hydrateRequest(id);

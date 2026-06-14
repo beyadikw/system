@@ -12,7 +12,8 @@
   function normalizeRequest(r) {
     if (!r) return null;
     const base = window.API_BASE || '';   // عنوان الخادم (مطلوب عند الفتح من GitHub Pages)
-    const fileUrl = (p) => `${base}/uploads/${p}`;
+    // روابط Cloudinary كاملة تُستخدم كما هي؛ الملفات المحلية تُقدَّم عبر /uploads
+    const fileUrl = (p) => /^https?:\/\//i.test(p) ? p : `${base}/uploads/${p}`;
     const photos = (r.report_photos || r.attachments && r.attachments.filter(a => a.kind === 'photo') || [])
       .map(p => p.stored_path ? fileUrl(p.stored_path) : null).filter(Boolean);
     const atts = r.attachments || [];
