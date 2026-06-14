@@ -77,6 +77,7 @@
     reports: {
       list: () => req('GET', '/reports'),
       get: (requestId) => req('GET', '/reports/' + requestId),
+      accept: (requestId) => req('POST', '/reports/' + requestId + '/accept'),
       /** حفظ تقرير داخلي — fields + صور (مصفوفة File) */
       save(requestId, fields, photos) {
         const fd = new FormData();

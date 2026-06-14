@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS reports (
   outcomes    TEXT,
   notes       TEXT,
   source      ENUM('internal','executor') NOT NULL DEFAULT 'internal', -- من رفع التقرير
+  status      ENUM('pending','accepted') NOT NULL DEFAULT 'accepted',  -- pending = بانتظار قبول المنسّق
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_rep_req FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

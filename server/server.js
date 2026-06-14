@@ -12,7 +12,7 @@ const { UPLOAD_DIR } = require('./middleware/upload');
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+app.use(cors());   // يسمح بطلبات الواجهة من أي مصدر (Render أو GitHub Pages) — لا تُستخدم الكوكيز، فالمصادقة عبر توكن في الترويسة
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 

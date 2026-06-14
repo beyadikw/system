@@ -5,20 +5,21 @@ const { hydrateRequest } = require('./helpers');
 const { sendMail, templates } = require('../services/email');
 
 /** يحفظ/يحدّث تقريراً ويربط صوره */
-async function saveReport({ requestId, body, files, source }) {
+async function saveReport({ requestId, body, files, source, status }) {
   const reqRows = await q(`SELECT r.*, h.capacity AS hall_capacity FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.id=?`, [requestId]);
   if (!reqRows[0]) { const e = new Error('الطلب غير موجود'); e.status = 404; throw e; }
   const capacity = Number(body.capacity) || reqRows[0].hall_capacity || 0;
+  const st = status || 'accepted';
 
   await withTx(async (conn) => {
     await conn.execute(
-      `INSERT INTO reports (request_id, attendees, capacity, has_video, summary, outcomes, notes, source)
-       VALUES (?,?,?,?,?,?,?,?)
+      `INSERT INTO reports (request_id, attendees, capacity, has_video, summary, outcomes, notes, source, status)
+       VALUES (?,?,?,?,?,?,?,?,?)
        ON DUPLICATE KEY UPDATE attendees=VALUES(attendees), capacity=VALUES(capacity),
          has_video=VALUES(has_video), summary=VALUES(summary), outcomes=VALUES(outcomes),
-         notes=VALUES(notes), source=VALUES(source)`,
+         notes=VALUES(notes), source=VALUES(source), status=VALUES(status)`,
       [requestId, Number(body.attendees) || 0, capacity, body.video === 'true' || body.video === true ? 1 : 0,
-       body.summary || null, body.outcomes || null, body.notes || null, source]
+       body.summary || null, body.outcomes || null, body.notes || null, source, st]
     );
     // صور التقرير
     const photos = (files && files.photos) || [];
@@ -43,7 +44,7 @@ exports.list = async (req, res, next) => {
     const rows = await q(
       `SELECT r.id, r.event_name, r.organization, r.lecturer, r.hall_id, h.name AS hall_name,
               h.capacity AS hall_capacity, r.proposed_dates,
-              rep.attendees, rep.capacity, rep.has_video,
+              rep.attendees, rep.capacity, rep.has_video, rep.status AS report_status, rep.source AS report_source,
               (rep.id IS NOT NULL) AS has_report,
               (SELECT COUNT(*) FROM attachments a WHERE a.request_id=r.id AND a.kind='photo') AS photo_count
        FROM requests r LEFT JOIN halls h ON h.id=r.hall_id
@@ -67,8 +68,17 @@ exports.getOne = async (req, res, next) => {
 /** POST /api/reports/:requestId  (داخلي — يتطلّب مصادقة) */
 exports.create = async (req, res, next) => {
   try {
-    const full = await saveReport({ requestId: req.params.requestId, body: req.body, files: req.files, source: 'internal' });
+    const full = await saveReport({ requestId: req.params.requestId, body: req.body, files: req.files, source: 'internal', status: 'accepted' });
     res.status(201).json(full);
+  } catch (e) { next(e); }
+};
+
+/** POST /api/reports/:requestId/accept — قبول تقرير ورد من الجهة المنفّذة */
+exports.accept = async (req, res, next) => {
+  try {
+    await q(`UPDATE reports SET status='accepted' WHERE request_id=?`, [req.params.requestId]);
+    const full = await hydrateRequest(req.params.requestId);
+    res.json(full);
   } catch (e) { next(e); }
 };
 
@@ -78,7 +88,8 @@ exports.getByToken = async (req, res, next) => {
     const rows = await q(
       `SELECT r.id, r.event_name, r.organization, r.lecturer, r.hall_id, h.name AS hall_name,
               h.capacity AS hall_capacity, r.proposed_dates, r.goals, r.axes
-       FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.share_token=?`, [req.params.token]
+       FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.share_token=? OR r.id=?`,
+      [req.params.token, req.params.token]
     );
     if (!rows[0]) return res.status(404).json({ error: 'الرابط غير صالح' });
     res.json(rows[0]);
@@ -88,9 +99,9 @@ exports.getByToken = async (req, res, next) => {
 /** POST /api/share/:token — رفع التقرير من الجهة المنفّذة (عام) */
 exports.submitByToken = async (req, res, next) => {
   try {
-    const rows = await q(`SELECT id FROM requests WHERE share_token=?`, [req.params.token]);
+    const rows = await q(`SELECT id FROM requests WHERE share_token=? OR id=?`, [req.params.token, req.params.token]);
     if (!rows[0]) return res.status(404).json({ error: 'الرابط غير صالح' });
-    const full = await saveReport({ requestId: rows[0].id, body: req.body, files: req.files, source: 'executor' });
+    const full = await saveReport({ requestId: rows[0].id, body: req.body, files: req.files, source: 'executor', status: 'pending' });
     // إشعار الفريق باستلام التقرير
     const tpl = templates.reportReceived(full);
     sendMail({ to: process.env.ADMIN_NOTIFY_EMAIL, ...tpl, template: 'reportReceived', requestId: full.id }).catch(() => {});

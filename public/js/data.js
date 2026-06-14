@@ -31,6 +31,7 @@
       axes: r.axes,
       notes: r.notes,
       submitted: r.submitted_at || '',
+      shareToken: r.share_token || null,
       cats: (r.categories || []).map(c => c.id),
       rejectReason: r.reject_reason || null,
       beneficiaries: r.report ? r.report.attendees : 0,
@@ -42,6 +43,9 @@
         outcomes: r.report.outcomes,
         notes: r.report.notes,
         photoData: photos,
+        source: r.report.source || 'internal',
+        status: r.report.status || 'accepted',
+        pending: (r.report.status || 'accepted') === 'pending',
       } : null,
       files: {
         request: reqDoc ? { name: reqDoc.file_name, url: `/uploads/${reqDoc.stored_path}` } : null,
@@ -132,6 +136,18 @@
         outcomes: rep.outcomes || '', notes: rep.notes || '',
       };
       await window.API.reports.save(id, fields, photos);
+    },
+
+    async acceptReport(id) {
+      if (!LIVE) return;
+      await window.API.reports.accept(id);
+    },
+
+    /** يولّد/يجلب رمز رابط رفع التقرير للجهة المنفّذة */
+    async getShareToken(req) {
+      if (!LIVE) return req.shareToken || req.id;
+      const r = await window.API.requests.share(req.id);
+      return (r && r.token) || req.shareToken || req.id;
     },
   };
 

@@ -68,6 +68,8 @@ function App() {
     const list = [];
     seed.filter(r => r.status === 'review').slice(0, 3).forEach(r =>
       list.push({ ...makeNotif('new', 'طلب بانتظار المراجعة', r.event, r.id), read: false, time: 'اليوم' }));
+    seed.filter(r => r.report && r.report.pending).forEach(r =>
+      list.push({ ...makeNotif('report', 'تقرير ختامي بانتظار القبول', r.event, r.id), read: false, time: 'اليوم' }));
     seed.filter(r => r.status === 'approved' && !r.report).slice(0, 2).forEach(r =>
       list.push({ ...makeNotif('approved', 'فعالية معتمدة بانتظار التقرير', r.event, r.id), read: true, time: 'أمس' }));
     return list;
@@ -75,6 +77,7 @@ function App() {
   const [notifOpen, setNotifOpen] = useStateA(false);
   const bellRef = useRefA(null);
   const seenIds = useRefA(null);   // مجموعة أرقام الطلبات المعروفة (للوضع الحيّ)
+  const seenReports = useRefA(null); // أرقام الطلبات التي ورد لها تقرير بانتظار القبول
   const firstLoad = useRefA(true);
 
   const unread = notifs.filter(n => !n.read).length;
@@ -93,11 +96,16 @@ function App() {
   // يفحص الطلبات الواردة ويولّد إشعارات للطلبات الجديدة (الوضع الحيّ)
   function syncNotifs(list) {
     if (!seenIds.current) seenIds.current = new Set();
+    if (!seenReports.current) seenReports.current = new Set();
     if (firstLoad.current) {
-      // أول تحميل: أنشئ إشعارات لما ينتظر المراجعة (دون إزعاج بإشعار لكل طلب قديم)
+      // أول تحميل: أنشئ إشعارات لما ينتظر المراجعة والتقارير بانتظار القبول
       const seedList = [];
       list.filter(r => r.status === 'review').forEach(r =>
         seedList.push({ ...makeNotif('new', 'طلب بانتظار المراجعة', r.event, r.id), time: 'بانتظارك' }));
+      list.filter(r => r.report && r.report.pending).forEach(r => {
+        seedList.push({ ...makeNotif('report', 'تقرير ختامي بانتظار القبول', r.event, r.id), time: 'بانتظارك' });
+        seenReports.current.add(r.id);
+      });
       list.filter(r => r.status === 'approved' && !r.report).forEach(r =>
         seedList.push({ ...makeNotif('approved', 'فعالية معتمدة بانتظار التقرير', r.event, r.id), read: true, time: '' }));
       if (seedList.length) setNotifs(seedList);
@@ -112,6 +120,18 @@ function App() {
       pushNotif(makeNotif('new', 'طلب رعاية جديد ورد الآن', r.event, r.id));
     });
     if (fresh.length) showToast(`ورد ${fresh.length === 1 ? 'طلب جديد' : fresh.length + ' طلبات جديدة'}`);
+    // نبّه على التقارير الجديدة الواردة من الجهات المنفّذة
+    const freshReports = list.filter(r => r.report && r.report.pending && !seenReports.current.has(r.id));
+    freshReports.forEach(r => {
+      seenReports.current.add(r.id);
+      pushNotif(makeNotif('report', 'تقرير ختامي ورد الآن بانتظار القبول', r.event, r.id));
+    });
+    if (freshReports.length) showToast(`ورد ${freshReports.length === 1 ? 'تقرير جديد' : freshReports.length + ' تقارير'} بانتظار القبول`);
+    // أزل التي لم تعد معلّقة (قُبِلت من جهاز آخر)
+    seenReports.current.forEach(id => {
+      const r = list.find(x => x.id === id);
+      if (!r || !r.report || !r.report.pending) seenReports.current.delete(id);
+    });
   }
 
   useEffectA(() => {
@@ -164,9 +184,26 @@ function App() {
   function saveReport(id, rep) {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', report: rep, beneficiaries: rep.attendees } : r));
     const r = requests.find(x => x.id === id);
-    pushNotif(makeNotif('report', 'تم استلام تقرير ختامي', r ? r.event : id, id));
+    const name = r ? r.event : id;
+    if (rep.pending) {
+      pushNotif(makeNotif('report', 'تقرير ختامي بانتظار القبول', name, id));
+      showToast(`ورد تقرير «${name}» بانتظار قبولك`);
+      if (seenReports.current) seenReports.current.add(id);
+    } else {
+      pushNotif(makeNotif('report', 'تم حفظ التقرير الختامي', name, id));
+      showToast(`تم حفظ تقرير «${name}»`);
+    }
     if (LIVE) window.Store.saveReport(id, rep).then(refreshRequests)
       .catch(e => showToast('تعذّر حفظ التقرير: ' + e.message));
+  }
+  function acceptReport(id) {
+    setRequests(prev => prev.map(r => (r.id === id && r.report) ? { ...r, report: { ...r.report, pending: false, status: 'accepted' } } : r));
+    const r = requests.find(x => x.id === id);
+    if (seenReports.current) seenReports.current.delete(id);
+    pushNotif(makeNotif('report', 'تم قبول التقرير الختامي', r ? r.event : id, id));
+    showToast(r ? `تم قبول تقرير «${r.event}»` : 'تم قبول التقرير');
+    if (LIVE) window.Store.acceptReport(id).then(refreshRequests)
+      .catch(e => showToast('تعذّر القبول: ' + e.message));
   }
   function applyEdit(updated) {
     setRequests(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
@@ -258,7 +295,7 @@ function App() {
           {!loading && screen === 'dashboard' && <DashboardScreen requests={requests} onNav={nav} />}
           {!loading && screen === 'requests' && <RequestsScreen requests={requests} onUpdate={updateStatus} onNav={nav} onEdit={setEditReq} onDelete={deleteRequest} focusId={focusId} onClearFocus={() => setFocusId(null)} />}
           {!loading && screen === 'new' && <NewRequestScreen onSubmit={submitNew} onNav={nav} />}
-          {!loading && screen === 'reports' && <ReportsScreen requests={requests} onSaveReport={saveReport} focusId={focusId} onClearFocus={() => setFocusId(null)} />}
+          {!loading && screen === 'reports' && <ReportsScreen requests={requests} onSaveReport={saveReport} onAcceptReport={acceptReport} focusId={focusId} onClearFocus={() => setFocusId(null)} />}
         </main>
       </div>
 

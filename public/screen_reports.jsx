@@ -27,7 +27,7 @@ function PhotoUploader({ photos, onChange }) {
 }
 
 /* ---------- shared report form fields ---------- */
-function ReportForm({ req, external, onSave, onCancel }) {
+function ReportForm({ req, external, editing, onSave, onCancel }) {
   const cap = hallCap(req.hall);
   const init = req.report || {};
   const [attendees, setAttendees] = useStateRp(init.attendees != null ? String(init.attendees) : '');
@@ -52,6 +52,8 @@ function ReportForm({ req, external, onSave, onCancel }) {
       attendees: Number(attendees), capacity: cap, video,
       summary, outcomes, notes,
       photoData: photos.filter(Boolean),
+      source: external ? 'executor' : 'internal',
+      pending: !!external,
     });
   }
 
@@ -94,7 +96,7 @@ function ReportForm({ req, external, onSave, onCancel }) {
       <div className="spread" style={{ borderTop: '1px solid var(--da-line)', paddingTop: 20 }}>
         {onCancel ? <button className="btn btn-ghost" onClick={onCancel}>إلغاء</button> : <span></span>}
         <button className="btn btn-primary" onClick={save}>
-          <Icon name="tasks" />{external ? 'إرسال التقرير إلى خذ بيدي' : 'حفظ ونشر التقرير'}
+          <Icon name="tasks" />{external ? 'إرسال التقرير إلى خذ بيدي' : (editing ? 'حفظ التعديلات' : 'حفظ ونشر التقرير')}
         </button>
       </div>
     </div>
@@ -103,16 +105,17 @@ function ReportForm({ req, external, onSave, onCancel }) {
 
 /* ---------- internal report builder ---------- */
 function ReportBuilder({ req, onSave, onCancel }) {
+  const editing = !!req.report;
   return (
     <div className="formwrap screen">
       <button className="btn btn-ghost btn-sm" onClick={onCancel} style={{ marginBottom: 16 }}><Icon name="arrow-right" />رجوع للقائمة</button>
       <div className="card" style={{ padding: '26px 28px' }}>
         <div className="card-h" style={{ marginBottom: 6 }}>
           <IconPlate name="reports" tone="gold" size={36} />
-          <h3 style={{ fontSize: 17 }}>إنشاء التقرير الختامي <small>{req.event}</small></h3>
+          <h3 style={{ fontSize: 17 }}>{editing ? 'تعديل التقرير الختامي' : 'إنشاء التقرير الختامي'} <small>{req.event}</small></h3>
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 18 }}>القاعة: {hallName(req.hall)} · السعة {hallCap(req.hall)} · التاريخ {req.dates}</p>
-        <ReportForm req={req} onSave={onSave} onCancel={onCancel} />
+        <ReportForm req={req} onSave={onSave} onCancel={onCancel} editing={editing} />
       </div>
     </div>
   );
@@ -154,10 +157,47 @@ function ExternalReportView({ req, onSave, onClose }) {
 }
 
 /* ---------- share-link modal ---------- */
+function buildReportLink(token) {
+  // يبني الرابط نسبةً للصفحة الحالية — يعمل على Render (جذر) وعلى GitHub Pages (مسار فرعي)
+  try { return new URL('report.html?token=' + encodeURIComponent(token), location.href).href; }
+  catch (e) { return location.origin + '/report.html?token=' + encodeURIComponent(token); }
+}
 function ShareLinkModal({ req, onClose, onOpenExt }) {
-  const link = `https://beyadik.kw/r/${req.id}`;
+  // رابط فوري قابل للنسخ دائماً (يُحدَّث بالرمز الحقيقي عند وصوله)
+  const [link, setLink] = useStateRp(buildReportLink(req.shareToken || req.id));
+  const [refining, setRefining] = useStateRp(true);
   const [copied, setCopied] = useStateRp(false);
-  function copy() { try { navigator.clipboard.writeText(link); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1800); }
+
+  useEffectRp(() => {
+    let alive = true;
+    const timeout = setTimeout(() => { if (alive) setRefining(false); }, 6000);
+    (async () => {
+      try {
+        if (window.Store && window.Store.getShareToken) {
+          const token = await window.Store.getShareToken(req);
+          if (alive && token) setLink(buildReportLink(token));
+        }
+      } catch (e) { /* يبقى الرابط الاحتياطي */ }
+      if (alive) { clearTimeout(timeout); setRefining(false); }
+    })();
+    return () => { alive = false; clearTimeout(timeout); };
+  }, []);
+
+  function copy() {
+    const el = document.getElementById('bk-share-input');
+    let ok = false;
+    try {
+      if (el) { el.removeAttribute('readonly'); el.focus(); el.select(); el.setSelectionRange(0, 99999); ok = document.execCommand('copy'); el.setAttribute('readonly', ''); }
+    } catch (e) { ok = false; }
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1800); return; }
+    // احتياطي: clipboard API غير المتزامن مع انتظار النتيجة
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link)
+        .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); })
+        .catch(() => { if (el) { el.focus(); el.select(); } });
+    } else if (el) { el.focus(); el.select(); }
+  }
+
   const msg = encodeURIComponent(`رابط رفع تقرير فعالية «${req.event}» — مشروع خذ بيدي:\n${link}`);
   return (
     <div className="modal-scrim" onClick={onClose}>
@@ -166,27 +206,30 @@ function ShareLinkModal({ req, onClose, onOpenExt }) {
           <IconPlate name="globe" tone="gold" size={36} />
           <h3 style={{ fontSize: 16 }}>إرسال رابط للجهة المنفّذة</h3>
         </div>
-        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>أرسل هذا الرابط لـ «{req.org}» ليقوموا برفع تقرير الفعالية وصوره، وسيصلكم مباشرةً في النظام.</p>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>أرسل هذا الرابط لـ «{req.org}» ليرفعوا تقرير الفعالية وصوره، وسيصلكم في النظام بانتظار قبولكم.</p>
         <div className="linkbox">
-          <input value={link} readOnly />
+          <input id="bk-share-input" value={link} readOnly onFocus={e => e.target.select()} onClick={e => e.target.select()} />
           <button className="btn btn-primary btn-sm" onClick={copy}>{copied ? 'تم النسخ ✓' : 'نسخ'}</button>
         </div>
+        {refining && <div className="muted" style={{ fontSize: 11, marginTop: -6, marginBottom: 8 }}>يجري التأكد من الرمز النهائي… الرابط أعلاه صالح للنسخ الآن.</div>}
         <div className="row-flex" style={{ gap: 8 }}>
           <a className="btn btn-ghost btn-sm" href={`https://wa.me/?text=${msg}`} target="_blank" rel="noreferrer" style={{ flex: 1 }}>واتساب</a>
           <a className="btn btn-ghost btn-sm" href={`mailto:?subject=${encodeURIComponent('رابط رفع تقرير الفعالية')}&body=${msg}`} style={{ flex: 1 }}>البريد</a>
         </div>
         <div style={{ borderTop: '1px solid var(--da-line)', margin: '18px 0 14px' }}></div>
-        <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => { onClose(); onOpenExt(req.id); }}>
-          <Icon name="arrow-left" />فتح الرابط (معاينة صفحة الجهة المنفّذة)
+        <button className="btn btn-ghost" style={{ width: '100%' }} onClick={() => window.open(link, '_blank')}>
+          <Icon name="globe" tone="gold" />فتح الرابط في تبويب جديد
         </button>
-        <p className="muted" style={{ fontSize: 11.5, marginTop: 10, marginBottom: 0, textAlign: 'center' }}>للمعاينة فقط — هكذا ستظهر الصفحة للجهة المنفّذة.</p>
+        <button className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} onClick={() => { onClose(); onOpenExt(req.id); }}>
+          <Icon name="arrow-left" />معاينة صفحة الجهة المنفّذة داخل النظام
+        </button>
       </div>
     </div>
   );
 }
 
 /* ---------- final report view ---------- */
-function ReportView({ req, onBack }) {
+function ReportView({ req, onBack, onEdit, onAccept }) {
   const rep = req.report;
   const pct = Math.round((rep.attendees / rep.capacity) * 100);
   const photos = (rep.photoData || []).filter(Boolean);
@@ -196,11 +239,22 @@ function ReportView({ req, onBack }) {
     <div className="screen">
       <div className="spread" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <button className="btn btn-ghost btn-sm" onClick={onBack}><Icon name="arrow-right" />رجوع للقائمة</button>
-        <div className="row-flex" style={{ gap: 8 }}>
+        <div className="row-flex" style={{ gap: 8, flexWrap: 'wrap' }}>
+          {onEdit && <button className="btn btn-ghost btn-sm" onClick={() => onEdit(req.id)}><Icon name="forms" tone="gold" />تعديل التقرير</button>}
+          {rep.pending && onAccept && <button className="btn btn-green btn-sm" onClick={() => onAccept(req.id)}><Icon name="tasks" />قبول التقرير</button>}
           <button className="btn btn-ghost btn-sm" onClick={() => downloadReportPDF(req)}><Icon name="doc" tone="gold" />تنزيل PDF</button>
           <button className="btn btn-primary btn-sm" onClick={() => downloadReportWord(req)}><Icon name="doc" />تنزيل Word</button>
         </div>
       </div>
+      {rep.pending && (
+        <div className="card" style={{ marginBottom: 14, background: 'var(--st-review-bg)', borderColor: 'var(--st-review)', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px' }}>
+          <Icon name="alert" tone="warm" size={22} />
+          <div style={{ flex: 1, fontSize: 13.5, color: 'var(--st-review)' }}>
+            <b>تقرير وارد من الجهة المنفّذة بانتظار قبولكم.</b> راجعوا البيانات والصور، ويمكنكم التعديل عليه قبل القبول.
+          </div>
+          <button className="btn btn-green btn-sm" onClick={() => onAccept(req.id)}><Icon name="tasks" />قبول</button>
+        </div>
+      )}
       <div className="report-doc">
         <div className="report-hero">
           <div className="eyebrow">تقرير ختامي · مشروع خذ بيدي</div>
@@ -274,7 +328,7 @@ function ReportView({ req, onBack }) {
 }
 
 /* ---------- reports screen ---------- */
-function ReportsScreen({ requests, onSaveReport, focusId, onClearFocus }) {
+function ReportsScreen({ requests, onSaveReport, onAcceptReport, focusId, onClearFocus }) {
   const [mode, setMode] = useStateRp('list'); // list | build | view
   const [sel, setSel] = useStateRp(null);
   const [shareId, setShareId] = useStateRp(null);
@@ -282,7 +336,9 @@ function ReportsScreen({ requests, onSaveReport, focusId, onClearFocus }) {
 
   const doneReqs = requests.filter(r => r.status === 'approved');
   const withReport = doneReqs.filter(r => r.report);
-  const pending = doneReqs.filter(r => !r.report);
+  const pending = doneReqs.filter(r => !r.report);                       // بانتظار رفع التقرير
+  const pendingAccept = withReport.filter(r => r.report.pending);        // تقارير واردة بانتظار القبول
+  const published = withReport.filter(r => !r.report.pending);           // تقارير مقبولة/منشورة
 
   useEffectRp(() => {
     if (focusId) {
@@ -309,11 +365,59 @@ function ReportsScreen({ requests, onSaveReport, focusId, onClearFocus }) {
     return <React.Fragment><ReportBuilder req={selReq} onCancel={() => { setMode('list'); setSel(null); }} onSave={(id, rep) => { onSaveReport(id, rep); setMode('view'); }} />{overlay}</React.Fragment>;
   }
   if (mode === 'view' && selReq && selReq.report) {
-    return <React.Fragment><ReportView req={selReq} onBack={() => { setMode('list'); setSel(null); }} />{overlay}</React.Fragment>;
+    return <React.Fragment><ReportView req={selReq} onBack={() => { setMode('list'); setSel(null); }} onEdit={(id) => { setSel(id); setMode('build'); }} onAccept={(id) => { onAcceptReport(id); }} />{overlay}</React.Fragment>;
   }
+
+  const card = (r, opts = {}) => {
+    const pct = Math.round((r.report.attendees / r.report.capacity) * 100);
+    const pc = (r.report.photoData || []).filter(Boolean).length || r.report.photos || 6;
+    return (
+      <div key={r.id} className="card" style={{ padding: 0, overflow: 'hidden', cursor: 'pointer', borderColor: opts.pending ? 'var(--st-review)' : undefined }} onClick={() => { setSel(r.id); setMode('view'); }}>
+        <div style={{ background: 'var(--bk-ink)', color: '#fff', padding: '16px 18px', position: 'relative' }}>
+          <div className="spread">
+            <div style={{ fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--bk-gold-bright)' }}>تقرير ختامي</div>
+            {opts.pending && <span style={{ fontSize: 10, background: 'var(--st-review)', color: '#fff', padding: '2px 9px', borderRadius: 100, fontWeight: 700 }}>بانتظار القبول</span>}
+          </div>
+          <b style={{ fontSize: 15.5, display: 'block', marginTop: 4, lineHeight: 1.4 }}>{r.event}</b>
+          <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.65)', marginTop: 4 }}>{r.dates} · {hallName(r.hall)}</div>
+        </div>
+        <div style={{ padding: '14px 18px' }}>
+          <div className="spread" style={{ marginBottom: 12 }}>
+            <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--bk-ink)' }}>{r.report.attendees}<span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>/{r.report.capacity}</span></div><div className="muted" style={{ fontSize: 11 }}>الحضور</div></div>
+            <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--bk-ink)' }}>{pct}<span className="muted" style={{ fontSize: 12 }}>٪</span></div><div className="muted" style={{ fontSize: 11 }}>الإشغال</div></div>
+            <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--bk-ink)' }}>{pc}</div><div className="muted" style={{ fontSize: 11 }}>صور</div></div>
+          </div>
+          {opts.pending ? (
+            <div className="row-flex" style={{ gap: 8 }} onClick={e => e.stopPropagation()}>
+              <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => onAcceptReport(r.id)}><Icon name="tasks" />قبول</button>
+              <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => { setSel(r.id); setMode('build'); }}><Icon name="forms" tone="gold" />تعديل</button>
+            </div>
+          ) : (
+            <div className="row-flex" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {r.report.video && <span className="chip gold" style={{ fontSize: 10.5 }}>فيديو ✓</span>}
+              <span className="more" style={{ marginInlineStart: 'auto', fontSize: 12 }}>عرض ←</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="screen">
+      {pendingAccept.length > 0 && (
+        <div className="card" style={{ marginBottom: 20, borderColor: 'var(--st-review)', background: 'var(--st-review-bg)' }}>
+          <div className="card-h">
+            <IconPlate name="alert" tone="warm" size={34} />
+            <h3>تقارير واردة بانتظار القبول <small>{pendingAccept.length}</small></h3>
+          </div>
+          <p className="muted" style={{ fontSize: 12.5, marginTop: -8, marginBottom: 14 }}>تقارير رفعتها الجهات المنفّذة — راجعها واقبلها أو عدّل عليها.</p>
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))' }}>
+            {pendingAccept.map(r => card(r, { pending: true }))}
+          </div>
+        </div>
+      )}
+
       {pending.length > 0 && (
         <div className="card" style={{ marginBottom: 20, borderColor: 'var(--bk-gold-line)', background: 'var(--bk-gold-tint)' }}>
           <div className="card-h">
@@ -339,34 +443,11 @@ function ReportsScreen({ requests, onSaveReport, focusId, onClearFocus }) {
 
       <div className="card-h" style={{ marginBottom: 14, paddingInline: 2 }}>
         <IconPlate name="reports" tone="gold" size={34} />
-        <h3>التقارير المنشورة <small>{withReport.length} تقرير</small></h3>
+        <h3>التقارير المنشورة <small>{published.length} تقرير</small></h3>
       </div>
-      {withReport.length === 0 && <div className="empty"><Icon name="reports" tone="neutral" />لا توجد تقارير منشورة بعد.</div>}
+      {published.length === 0 && <div className="empty"><Icon name="reports" tone="neutral" />لا توجد تقارير منشورة بعد.</div>}
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))' }}>
-        {withReport.map(r => {
-          const pct = Math.round((r.report.attendees / r.report.capacity) * 100);
-          const pc = (r.report.photoData || []).filter(Boolean).length || r.report.photos || 6;
-          return (
-            <div key={r.id} className="card" style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }} onClick={() => { setSel(r.id); setMode('view'); }}>
-              <div style={{ background: 'var(--bk-ink)', color: '#fff', padding: '16px 18px', position: 'relative' }}>
-                <div style={{ fontSize: 10.5, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--bk-gold-bright)' }}>تقرير ختامي</div>
-                <b style={{ fontSize: 15.5, display: 'block', marginTop: 4, lineHeight: 1.4 }}>{r.event}</b>
-                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.65)', marginTop: 4 }}>{r.dates} · {hallName(r.hall)}</div>
-              </div>
-              <div style={{ padding: '14px 18px' }}>
-                <div className="spread" style={{ marginBottom: 12 }}>
-                  <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--bk-ink)' }}>{r.report.attendees}<span className="muted" style={{ fontSize: 12, fontWeight: 600 }}>/{r.report.capacity}</span></div><div className="muted" style={{ fontSize: 11 }}>الحضور</div></div>
-                  <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--bk-ink)' }}>{pct}<span className="muted" style={{ fontSize: 12 }}>٪</span></div><div className="muted" style={{ fontSize: 11 }}>الإشغال</div></div>
-                  <div><div style={{ fontSize: 20, fontWeight: 700, color: 'var(--bk-ink)' }}>{pc}</div><div className="muted" style={{ fontSize: 11 }}>صور</div></div>
-                </div>
-                <div className="row-flex" style={{ gap: 6, flexWrap: 'wrap' }}>
-                  {r.report.video && <span className="chip gold" style={{ fontSize: 10.5 }}>فيديو ✓</span>}
-                  <span className="more" style={{ marginInlineStart: 'auto', fontSize: 12 }}>عرض ←</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {published.map(r => card(r))}
       </div>
       {overlay}
     </div>
