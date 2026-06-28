@@ -111,7 +111,20 @@
         <div><label>اسم المحاضر <span class="req">*</span></label><input id="lecturer" /><div class="err" id="e_lecturer"></div></div>
       </div>
       <div class="two">
-        <div><label>التواريخ المقترحة <span class="req">*</span></label><input id="dates" placeholder="مثال: ٢١ يونيو ٢٠٢٦" /><div class="err" id="e_dates"></div></div>
+        <div>
+          <label>من تاريخ <span class="req">*</span></label>
+          <input type="date" id="dateFrom" /><div class="err" id="e_dateFrom"></div>
+        </div>
+        <div>
+          <label>إلى تاريخ <span class="req">*</span></label>
+          <input type="date" id="dateTo" /><div class="err" id="e_dateTo"></div>
+        </div>
+      </div>
+      <div class="two">
+        <div>
+          <label>عدد الأيام <small style="font-weight:400;color:#9a9388">— يُحتسب تلقائياً</small></label>
+          <input id="daysOut" value="—" readonly style="background:#FBF6EA;font-weight:700;color:#997633" />
+        </div>
         <div><label>رقم الهاتف <span class="req">*</span></label><input id="phone" class="ltr" placeholder="+965 ____ ____" /><div class="err" id="e_phone"></div></div>
       </div>
       <label>حساب الإنستقرام <span class="req">*</span></label><input id="insta" class="ltr" placeholder="@username" /><div class="err" id="e_insta"></div>
@@ -150,17 +163,35 @@
     const $ = (id) => document.getElementById(id);
 
     const TERMS = [
-      'عدم إلحاق أي ضرر بالمرافق أو المعدات داخل القاعة، وفي حال حدوثه يتحمّل العميل المسؤولية الكاملة.',
-      'احترام المواعيد المحدّدة للبدء والانتهاء من المحاضرة ومن حجز القاعة.',
-      'يمكن تغيير موعد الحجز مرّة واحدة فقط قبل ٧٢ ساعة من موعد المحاضرة، في حال توفّر القاعة.',
-      'وضع شعار المشروع على التصميم، مع عمل منشن لحساب المشروع @beyadikw.',
-      'تزويد الجهة الراعية بصور عالية الجودة من الفعالية.',
-      'تزويد الجهة الراعية بفيديو قصير (إن وُجد) عالي الجودة من الفعالية.',
+      { t: 'المحافظة على مرافق القاعة ومحتوياتها', d: 'نرجو المحافظة على جميع مرافق ومعدات القاعة، وفي حال حدوث أي تلف أو ضرر — لا قدّر الله — تتحمّل الجهة المنظّمة مسؤولية إصلاحه أو تعويضه.' },
+      { t: 'الالتزام بمواعيد الحجز', d: 'يرجى الالتزام بالوقت المحدّد لبداية الفعالية وانتهائها، بما يضمن حسن تنظيم الحجوزات والاستفادة المثلى من القاعة.' },
+      { t: 'تعديل موعد الحجز', d: 'يمكن طلب تعديل موعد الحجز لمرّة واحدة فقط، على أن يتمّ ذلك قبل موعد الفعالية بـ 72 ساعة على الأقل، ويخضع التعديل لتوفّر القاعة في الموعد المطلوب.' },
+      { t: 'إبراز هوية المشروع', d: 'يلتزم المستفيد بوضع شعار مشروع خذ بيدي على جميع التصاميم والإعلانات الخاصة بالفعالية، مع الإشارة إلى حساب المشروع عبر وسائل التواصل الاجتماعي: @beyadikw' },
+      { t: 'تزويد المشروع بالصور', d: 'يرجى تزويد المشروع بمجموعة من الصور الاحترافية وعالية الجودة التي توثّق الفعالية، لاستخدامها في النشر الإعلامي أو التقارير الخاصة بالمشروع.' },
+      { t: 'تزويد المشروع بمقطع فيديو (إن وجد)', d: 'في حال توفّر مقطع فيديو يوثّق الفعالية، نأمل تزويد المشروع بنسخة عالية الجودة، للاستفادة منها في التغطية الإعلامية أو التقارير.' },
     ];
-    $('terms').innerHTML = TERMS.map((t, i) => `<div class="term"><span class="n">${i + 1}</span><span class="tx">${t}</span></div>`).join('');
+    $('terms').innerHTML = TERMS.map((t, i) => `<div class="term"><span class="n">${i + 1}</span><span class="tx"><b style="display:block;margin-bottom:2px">${t.t}</b>${t.d}</span></div>`).join('');
 
     let agree = false;
     $('agree').addEventListener('click', () => { agree = !agree; $('cbx').classList.toggle('on', agree); $('agreeErr').style.display = 'none'; });
+
+    // تواريخ + احتساب عدد الأيام تلقائياً
+    function fmtAr(iso) {
+      if (!iso) return '';
+      try { return new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T00:00:00')); }
+      catch (e) { return iso; }
+    }
+    function calcDays() {
+      const a = $('dateFrom').value, b = $('dateTo').value;
+      $('dateTo').min = a || '';
+      if (!a) { $('daysOut').value = '—'; return 0; }
+      const d1 = new Date(a + 'T00:00:00'), d2 = new Date((b || a) + 'T00:00:00');
+      const n = Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+      $('daysOut').value = n + ' يوم';
+      return n;
+    }
+    $('dateFrom').addEventListener('change', calcDays);
+    $('dateTo').addEventListener('change', calcDays);
 
     // الفئات والقاعات — تظهر فوراً من قيم مضمّنة، وتُحدّث من الخادم إن توفّر
     const selectedCats = new Set();
@@ -243,18 +274,23 @@
 
     $('send').addEventListener('click', async () => {
       const errBox = $('sendErr'); errBox.style.display = 'none';
-      let ok = ['hall', 'lecturer', 'dates', 'phone', 'insta'].map(id => req(id)).every(Boolean);
-      if (!fileReq) { $('e_event'); ok = false; }
+      let ok = ['hall', 'lecturer', 'phone', 'insta'].map(id => req(id)).every(Boolean);
+      const dFrom = $('dateFrom').value, dTo = $('dateTo').value;
+      $('e_dateFrom').textContent = dFrom ? '' : 'مطلوب'; if (!dFrom) ok = false;
+      $('e_dateTo').textContent = dTo ? '' : 'مطلوب'; if (!dTo) ok = false;
+      if (dFrom && dTo && dTo < dFrom) { $('e_dateTo').textContent = 'تاريخ النهاية قبل البداية'; ok = false; }
       if (!ok || !fileReq || !fileCv) {
         errBox.textContent = !fileReq || !fileCv ? 'يلزم إرفاق الطلب الموقّع والسيرة الذاتية، وإكمال الحقول المطلوبة.' : 'أكمل الحقول المطلوبة.';
         errBox.style.display = 'block'; return;
       }
+      const days = calcDays();
+      const datesText = (!dTo || dTo === dFrom) ? fmtAr(dFrom) : `من ${fmtAr(dFrom)} إلى ${fmtAr(dTo)}`;
       const btn = $('send'); btn.disabled = true; btn.textContent = 'جارٍ الإرسال…';
       try {
         const created = await API.requests.create({
           event: $('event').value.trim(), org: $('org').value.trim(), lecturer: $('lecturer').value.trim(),
           hall: $('hall').value, phone: $('phone').value.trim(), insta: $('insta').value.trim(),
-          dates: $('dates').value.trim(), goals: $('goals').value.trim(), axes: $('axes').value.trim(),
+          dates: datesText, days: String(days), goals: $('goals').value.trim(), axes: $('axes').value.trim(),
           notes: $('notes').value.trim(), cats: [...selectedCats], agree: 'true',
         }, { requestDoc: fileReq, cv: fileCv });
         $('refChip').textContent = 'رقم الطلب: ' + created.id;

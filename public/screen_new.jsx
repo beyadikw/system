@@ -2,12 +2,12 @@
 const { useState: useStateN, useRef: useRefN } = React;
 
 const TERMS = [
-  'عدم إلحاق أي ضرر بالمرافق أو المعدات داخل القاعة، وفي حال حدوث ذلك يتحمّل العميل المسؤولية الكاملة.',
-  'احترام المواعيد المحدّدة للبدء والانتهاء من المحاضرة ومن حجز القاعة.',
-  'يمكن تغيير موعد الحجز مرّة واحدة فقط قبل ٧٢ ساعة من موعد المحاضرة، وذلك في حال توفّر القاعة للموعد الجديد.',
-  'وضع شعار المشروع على التصميم، مع عمل منشن (إشارة) لحساب المشروع @beyadikw.',
-  'تزويد الجهة الراعية بصور عالية الجودة من الفعالية لنشرها في وسائل التواصل الاجتماعي أو استخدامها في تقرير المشروع.',
-  'تزويد الجهة الراعية بفيديو قصير (إن وُجد) عالي الجودة من الفعالية لنشره في وسائل التواصل أو استخدامه في تقرير المشروع.',
+  { t: 'المحافظة على مرافق القاعة ومحتوياتها', d: 'نرجو المحافظة على جميع مرافق ومعدات القاعة، وفي حال حدوث أي تلف أو ضرر — لا قدّر الله — تتحمّل الجهة المنظّمة مسؤولية إصلاحه أو تعويضه.' },
+  { t: 'الالتزام بمواعيد الحجز', d: 'يرجى الالتزام بالوقت المحدّد لبداية الفعالية وانتهائها، بما يضمن حسن تنظيم الحجوزات والاستفادة المثلى من القاعة.' },
+  { t: 'تعديل موعد الحجز', d: 'يمكن طلب تعديل موعد الحجز لمرّة واحدة فقط، على أن يتمّ ذلك قبل موعد الفعالية بـ 72 ساعة على الأقل، ويخضع التعديل لتوفّر القاعة في الموعد المطلوب.' },
+  { t: 'إبراز هوية المشروع', d: 'يلتزم المستفيد بوضع شعار مشروع خذ بيدي على جميع التصاميم والإعلانات الخاصة بالفعالية، مع الإشارة إلى حساب المشروع عبر وسائل التواصل الاجتماعي: @beyadikw' },
+  { t: 'تزويد المشروع بالصور', d: 'يرجى تزويد المشروع بمجموعة من الصور الاحترافية وعالية الجودة التي توثّق الفعالية، لاستخدامها في النشر الإعلامي أو التقارير الخاصة بالمشروع.' },
+  { t: 'تزويد المشروع بمقطع فيديو (إن وجد)', d: 'في حال توفّر مقطع فيديو يوثّق الفعالية، نأمل تزويد المشروع بنسخة عالية الجودة، للاستفادة منها في التغطية الإعلامية أو التقارير.' },
 ];
 
 const STEPS = ['الشروط والأحكام', 'بيانات الفعالية', 'القاعة والتواصل', 'مراجعة وإرسال'];
@@ -43,10 +43,12 @@ function NewRequestScreen({ onSubmit, onNav }) {
   const [err, setErr] = useStateN({});
   const [f, setF] = useStateN({
     event: '', org: '', lecturer: '', goals: '', axes: '', cats: [],
-    hall: '', dates: '', phone: '', insta: '', notes: '',
+    hall: '', dateFrom: '', dateTo: '', phone: '', insta: '', notes: '',
     fileRequest: '', fileCv: '',
   });
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const days = daysBetween(f.dateFrom, f.dateTo);
+  const datesText = fmtDateRange(f.dateFrom, f.dateTo);
   const toggleCat = (id) => setF(p => ({ ...p, cats: p.cats.includes(id) ? p.cats.filter(c => c !== id) : [...p.cats, id] }));
 
   function validate(s) {
@@ -61,7 +63,9 @@ function NewRequestScreen({ onSubmit, onNav }) {
     if (s === 2) {
       if (!f.hall) e.hall = 'مطلوب';
       if (!f.lecturer.trim()) e.lecturer = 'مطلوب';
-      if (!f.dates.trim()) e.dates = 'مطلوب';
+      if (!f.dateFrom) e.dateFrom = 'مطلوب';
+      if (!f.dateTo) e.dateTo = 'مطلوب';
+      if (f.dateFrom && f.dateTo && f.dateTo < f.dateFrom) e.dateTo = 'تاريخ النهاية قبل البداية';
       if (!f.phone.trim()) e.phone = 'مطلوب';
       if (!f.insta.trim()) e.insta = 'مطلوب';
       if (!f.fileRequest) e.fileRequest = 'مطلوب';
@@ -84,7 +88,7 @@ function NewRequestScreen({ onSubmit, onNav }) {
     const payload = {
       id: ref, event: f.event, org: f.org, lecturer: f.lecturer, hall: f.hall,
       status: 'new', cats: f.cats, phone: f.phone, insta: f.insta.startsWith('@') ? f.insta : '@' + f.insta,
-      dates: f.dates, submitted: '2026-06-08', goals: f.goals, axes: f.axes, notes: f.notes,
+      dates: datesText, dateFrom: f.dateFrom, dateTo: f.dateTo, days, submitted: '2026-06-08', goals: f.goals, axes: f.axes, notes: f.notes,
       month: 'يونيو', beneficiaries: 0,
       files: { request: f.fileRequest || null, cv: f.fileCv || null },
     };
@@ -115,7 +119,7 @@ function NewRequestScreen({ onSubmit, onNav }) {
         <div className="row-flex" style={{ justifyContent: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => downloadRequestPackage(done)}><Icon name="reports" />تنزيل الطلب مع المرفقات</button>
           <button className="btn btn-ghost" onClick={() => onNav('requests')}>عرض في قائمة الطلبات</button>
-          <button className="btn btn-ghost" onClick={() => { setDone(null); setStep(0); setAgree(false); setF({ event: '', org: '', lecturer: '', goals: '', axes: '', cats: [], hall: '', dates: '', phone: '', insta: '', notes: '', fileRequest: '', fileCv: '' }); }}>تقديم طلب آخر</button>
+          <button className="btn btn-ghost" onClick={() => { setDone(null); setStep(0); setAgree(false); setF({ event: '', org: '', lecturer: '', goals: '', axes: '', cats: [], hall: '', dateFrom: '', dateTo: '', phone: '', insta: '', notes: '', fileRequest: '', fileCv: '' }); }}>تقديم طلب آخر</button>
         </div>
       </div>
     );
@@ -148,13 +152,13 @@ function NewRequestScreen({ onSubmit, onNav }) {
               {TERMS.map((t, i) => (
                 <div className="term" key={i}>
                   <span className="n">{i + 1}</span>
-                  <span className="tx">{t}</span>
+                  <span className="tx"><b style={{ display: 'block', marginBottom: 2 }}>{t.t}</b>{t.d}</span>
                 </div>
               ))}
             </div>
             <div className="agree-bar">
               <div className={`cbx ${agree ? 'on' : ''}`} onClick={() => { setAgree(a => !a); setErr({}); }}></div>
-              <label onClick={() => { setAgree(a => !a); setErr({}); }}>أقرّ بأنني اطّلعت على جميع الشروط والأحكام أعلاه وأوافق على الالتزام بها بالكامل.</label>
+              <label onClick={() => { setAgree(a => !a); setErr({}); }}>أتعهّد بأنني اطّلعت على الشروط والأحكام الواردة أعلاه، وأوافق على الالتزام بها كاملة.</label>
             </div>
             {err.agree && <div className="errmsg" style={{ marginTop: 8 }}>{err.agree}</div>}
           </div>
@@ -230,10 +234,25 @@ function NewRequestScreen({ onSubmit, onNav }) {
                 {err.lecturer && <div className="errmsg">{err.lecturer}</div>}
               </div>
               <div className="fgrp">
-                <label className="flbl">التواريخ المقترحة<span className="req">*</span></label>
-                <input className={`inp ${err.dates ? 'err' : ''}`} value={f.dates} onChange={e => set('dates', e.target.value)} placeholder="مثال: ٢١ يونيو ٢٠٢٦" />
-                {err.dates && <div className="errmsg">{err.dates}</div>}
+                <label className="flbl">عدد الأيام<small>يُحتسب تلقائياً من التواريخ</small></label>
+                <input className="inp" value={f.dateFrom ? days + ' يوم' : '—'} readOnly style={{ background: 'var(--bk-gold-tint)', fontWeight: 700, color: 'var(--bk-gold-deep)' }} />
               </div>
+            </div>
+            <div className="fgrp">
+              <label className="flbl">التواريخ المقترحة<span className="req">*</span><small>اختر من التقويم تاريخ البداية والنهاية</small></label>
+              <div className="fgrp two" style={{ marginBottom: 0 }}>
+                <div className="fgrp">
+                  <label className="flbl" style={{ fontWeight: 500, fontSize: 12, color: 'var(--da-muted)' }}>من تاريخ</label>
+                  <input type="date" className={`inp ${err.dateFrom ? 'err' : ''}`} value={f.dateFrom} onChange={e => set('dateFrom', e.target.value)} />
+                  {err.dateFrom && <div className="errmsg">{err.dateFrom}</div>}
+                </div>
+                <div className="fgrp">
+                  <label className="flbl" style={{ fontWeight: 500, fontSize: 12, color: 'var(--da-muted)' }}>إلى تاريخ</label>
+                  <input type="date" className={`inp ${err.dateTo ? 'err' : ''}`} value={f.dateTo} min={f.dateFrom || undefined} onChange={e => set('dateTo', e.target.value)} />
+                  {err.dateTo && <div className="errmsg">{err.dateTo}</div>}
+                </div>
+              </div>
+              {f.dateFrom && f.dateTo && !err.dateTo && <div className="hint" style={{ marginTop: 4 }}>{datesText} · {days} يوم</div>}
             </div>
             <div className="fgrp two">
               <div className="fgrp">
@@ -271,7 +290,8 @@ function NewRequestScreen({ onSubmit, onNav }) {
               <div className="field-row"><div className="k">الجهة الطالبة</div><div className="v">{f.org || '—'}</div></div>
               <div className="field-row"><div className="k">القاعة المطلوبة</div><div className="v">{f.hall ? hallName(f.hall) : '—'}</div></div>
               <div className="field-row"><div className="k">المحاضر</div><div className="v">{f.lecturer || '—'}</div></div>
-              <div className="field-row"><div className="k">التواريخ المقترحة</div><div className="v">{f.dates || '—'}</div></div>
+              <div className="field-row"><div className="k">التواريخ المقترحة</div><div className="v">{datesText || '—'}</div></div>
+              <div className="field-row"><div className="k">عدد الأيام</div><div className="v">{f.dateFrom ? days + ' يوم' : '—'}</div></div>
               <div className="field-row"><div className="k">الفئة المستهدفة</div><div className="v">{f.cats.map(catName).join('، ') || '—'}</div></div>
               <div className="field-row"><div className="k">رقم الهاتف</div><div className="v" style={{ direction: 'ltr', textAlign: 'right' }}>{f.phone || '—'}</div></div>
               <div className="field-row"><div className="k">الإنستقرام</div><div className="v" style={{ direction: 'ltr', textAlign: 'right' }}>{f.insta || '—'}</div></div>

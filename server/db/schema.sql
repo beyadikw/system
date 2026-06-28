@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS requests (
   phone          VARCHAR(40),
   instagram      VARCHAR(80),
   proposed_dates VARCHAR(160),
+  days           INT UNSIGNED,
   goals          TEXT,
   axes           TEXT,
   notes          TEXT,

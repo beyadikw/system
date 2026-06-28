@@ -66,7 +66,7 @@
         req('PATCH', `/requests/${id}/status`, { status, ...opts }),
       update: (id, fields) => req('PUT', `/requests/${id}`, {
         event: fields.event, org: fields.org, lecturer: fields.lecturer, hall: fields.hall,
-        phone: fields.phone, insta: fields.insta, dates: fields.dates,
+        phone: fields.phone, insta: fields.insta, dates: fields.dates, days: fields.days,
         goals: fields.goals, axes: fields.axes, notes: fields.notes, cats: fields.cats,
       }),
       share: (id, email) => req('POST', `/requests/${id}/share`, { email }),

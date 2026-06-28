@@ -57,9 +57,9 @@ exports.create = async (req, res, next) => {
       await conn.execute(
         `INSERT INTO requests
           (id, event_name, organization, lecturer, hall_id, status, phone, instagram,
-           proposed_dates, goals, axes, notes, agreed_terms, share_token, submitted_at)
-         VALUES (?,?,?,?,?, 'review', ?,?,?,?,?,?, 1, ?, ?)`,
-        [id, b.event, b.org, b.lecturer, b.hall, b.phone, insta, b.dates, b.goals, b.axes, b.notes || null, shareToken, today]
+           proposed_dates, days, goals, axes, notes, agreed_terms, share_token, submitted_at)
+         VALUES (?,?,?,?,?, 'review', ?,?,?,?,?,?,?, 1, ?, ?)`,
+        [id, b.event, b.org, b.lecturer, b.hall, b.phone, insta, b.dates, Number(b.days) || null, b.goals, b.axes, b.notes || null, shareToken, today]
       );
       for (const c of cats) {
         await conn.execute(`INSERT IGNORE INTO request_categories (request_id, category_id) VALUES (?,?)`, [id, c]);
@@ -152,12 +152,13 @@ exports.update = async (req, res, next) => {
            phone = COALESCE(?, phone),
            instagram = COALESCE(?, instagram),
            proposed_dates = COALESCE(?, proposed_dates),
+           days = COALESCE(?, days),
            goals = COALESCE(?, goals),
            axes = COALESCE(?, axes),
            notes = COALESCE(?, notes)
          WHERE id = ?`,
         [b.event || null, b.org || null, b.lecturer || null, b.hall || null,
-         b.phone || null, insta, b.dates || null, b.goals || null, b.axes || null,
+         b.phone || null, insta, b.dates || null, (b.days != null && b.days !== '' ? Number(b.days) : null), b.goals || null, b.axes || null,
          b.notes || null, req.params.id]
       );
       if (Array.isArray(b.cats)) {

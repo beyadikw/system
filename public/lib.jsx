@@ -172,6 +172,30 @@ function Spark({ data, color = 'var(--bk-gold)', w = 90, h = 28 }) {
 function hallName(id) { const x = window.SEED.HALLS.find(h => h.id === id); return x ? x.name : id; }
 function catName(id) { const x = window.SEED.CATS.find(c => c.id === id); return x ? x.name : id; }
 
+/* ---------- تواريخ ---------- */
+// ينسّق تاريخ ISO (YYYY-MM-DD) إلى نص عربي
+function fmtDateAr(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return iso;
+    return new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+  } catch (e) { return iso; }
+}
+// عدد الأيام بين تاريخين شاملاً الطرفين
+function daysBetween(fromIso, toIso) {
+  if (!fromIso) return 0;
+  const a = new Date(fromIso + 'T00:00:00'); const b = new Date((toIso || fromIso) + 'T00:00:00');
+  if (isNaN(a) || isNaN(b)) return 0;
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+}
+// يبني نص التواريخ المعروض من مدى
+function fmtDateRange(fromIso, toIso) {
+  if (!fromIso) return '';
+  if (!toIso || toIso === fromIso) return fmtDateAr(fromIso);
+  return `من ${fmtDateAr(fromIso)} إلى ${fmtDateAr(toIso)}`;
+}
+
 /* ============================================================
    تنزيل الطلب مع المرفقات (حزمة ZIP)
    ============================================================ */
@@ -186,12 +210,12 @@ function triggerDownload(blob, filename) {
 function requestDocHTML(req) {
   const cats = (req.cats || []).map(catName).join('، ');
   const terms = [
-    'عدم إلحاق أي ضرر بالمرافق أو المعدات داخل القاعة، وفي حال حدوثه يتحمّل العميل المسؤولية الكاملة.',
-    'احترام المواعيد المحدّدة للبدء والانتهاء من المحاضرة ومن حجز القاعة.',
-    'يمكن تغيير موعد الحجز مرّة واحدة فقط قبل ٧٢ ساعة من موعد المحاضرة، في حال توفّر القاعة.',
-    'وضع شعار المشروع على التصميم، مع عمل منشن لحساب المشروع @beyadikw.',
-    'تزويد الجهة الراعية بصور عالية الجودة من الفعالية.',
-    'تزويد الجهة الراعية بفيديو قصير (إن وُجد) عالي الجودة من الفعالية.',
+    { t: 'المحافظة على مرافق القاعة ومحتوياتها', d: 'نرجو المحافظة على جميع مرافق ومعدات القاعة، وفي حال حدوث أي تلف أو ضرر — لا قدّر الله — تتحمّل الجهة المنظّمة مسؤولية إصلاحه أو تعويضه.' },
+    { t: 'الالتزام بمواعيد الحجز', d: 'يرجى الالتزام بالوقت المحدّد لبداية الفعالية وانتهائها، بما يضمن حسن تنظيم الحجوزات والاستفادة المثلى من القاعة.' },
+    { t: 'تعديل موعد الحجز', d: 'يمكن طلب تعديل موعد الحجز لمرّة واحدة فقط، على أن يتمّ ذلك قبل موعد الفعالية بـ 72 ساعة على الأقل، ويخضع التعديل لتوفّر القاعة في الموعد المطلوب.' },
+    { t: 'إبراز هوية المشروع', d: 'يلتزم المستفيد بوضع شعار مشروع خذ بيدي على جميع التصاميم والإعلانات الخاصة بالفعالية، مع الإشارة إلى حساب المشروع عبر وسائل التواصل الاجتماعي: @beyadikw' },
+    { t: 'تزويد المشروع بالصور', d: 'يرجى تزويد المشروع بمجموعة من الصور الاحترافية وعالية الجودة التي توثّق الفعالية، لاستخدامها في النشر الإعلامي أو التقارير الخاصة بالمشروع.' },
+    { t: 'تزويد المشروع بمقطع فيديو (إن وجد)', d: 'في حال توفّر مقطع فيديو يوثّق الفعالية، نأمل تزويد المشروع بنسخة عالية الجودة، للاستفادة منها في التغطية الإعلامية أو التقارير.' },
   ];
   const row = (k, v) => `<tr><th>${k}</th><td>${v || '—'}</td></tr>`;
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
@@ -247,13 +271,14 @@ function requestDocHTML(req) {
   <table>
     ${row('القاعة المطلوبة', hallName(req.hall))}
     ${row('التواريخ المقترحة', req.dates)}
+    ${row('عدد الأيام', req.days ? req.days + ' يوم' : '')}
     ${row('رقم الهاتف', req.phone)}
     ${row('حساب الإنستقرام', req.insta)}
     ${row('ملاحظات', req.notes)}
   </table>
   <div class="sec-title">الشروط والأحكام</div>
-  <ol>${terms.map(t => `<li>${t}</li>`).join('')}</ol>
-  <div class="agreed">✓ أقرّت الجهة الطالبة بالموافقة على جميع الشروط والأحكام أعلاه.</div>
+  <ol>${terms.map(t => `<li><b>${t.t}</b><br>${t.d}</li>`).join('')}</ol>
+  <div class="agreed">✓ أتعهّدت الجهة الطالبة بأنها اطّلعت على الشروط والأحكام ووافقت على الالتزام بها كاملة.</div>
   <div class="sec-title" style="margin-top:18px">المرفقات</div>
   <ol>
     <li>طلب رعاية فعالية موقّع من الجهة الطالبة.</li>
@@ -365,6 +390,7 @@ function reportDocHTML(req) {
     ${drow('المحاضر', req.lecturer)}
     ${drow('القاعة', hallName(req.hall))}
     ${drow('التاريخ', req.dates)}
+    ${drow('عدد الأيام', req.days ? req.days + ' يوم' : '')}
     ${drow('الفئة المستهدفة', cats)}
     ${drow('عدد المستفيدين', `${rep.attendees} مستفيد` + (rep.capacity ? ` (نسبة إشغال ${pct}٪ من سعة ${rep.capacity})` : ''))}
     ${drow('توثيق مصوّر', `${photos.length || '—'} صورة${rep.video ? ' · فيديو متوفّر' : ''}`)}
@@ -432,4 +458,4 @@ async function downloadReportWord(req) {
   triggerDownload(new Blob(['\ufeff' + reportDocHTML(embedded)], { type: 'application/msword' }), `تقرير - ${safeFileName(req.event)}.doc`);
 }
 
-Object.assign(window, { Icon, IconPlate, StatusPill, Kpi, Donut, DonutWithLegend, Bars, AreaLine, Spark, hallName, catName, triggerDownload, requestDocHTML, downloadAttachment, downloadRequestPackage, reportDocHTML, printHTML, downloadReportPDF, downloadReportWord });
+Object.assign(window, { Icon, IconPlate, StatusPill, Kpi, Donut, DonutWithLegend, Bars, AreaLine, Spark, hallName, catName, fmtDateAr, daysBetween, fmtDateRange, triggerDownload, requestDocHTML, downloadAttachment, downloadRequestPackage, reportDocHTML, printHTML, downloadReportPDF, downloadReportWord });

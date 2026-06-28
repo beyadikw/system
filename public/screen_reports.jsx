@@ -114,7 +114,7 @@ function ReportBuilder({ req, onSave, onCancel }) {
           <IconPlate name="reports" tone="gold" size={36} />
           <h3 style={{ fontSize: 17 }}>{editing ? 'تعديل التقرير الختامي' : 'إنشاء التقرير الختامي'} <small>{req.event}</small></h3>
         </div>
-        <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 18 }}>القاعة: {hallName(req.hall)} · السعة {hallCap(req.hall)} · التاريخ {req.dates}</p>
+        <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 18 }}>القاعة: {hallName(req.hall)} · السعة {hallCap(req.hall)} · التاريخ {req.dates}{req.days ? ' · ' + req.days + ' يوم' : ''}</p>
         <ReportForm req={req} onSave={onSave} onCancel={onCancel} editing={editing} />
       </div>
     </div>
@@ -267,9 +267,10 @@ function ReportView({ req, onBack, onEdit, onAccept }) {
           </div>
         </div>
         <div className="report-body">
-          <div className="report-stats" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+          <div className="report-stats" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
             <div className="rs"><div className="v">{rep.attendees}<small> / {rep.capacity}</small></div><div className="l">الحضور الفعلي</div></div>
             <div className="rs"><div className="v">{pct}<small>٪</small></div><div className="l">نسبة الإشغال</div></div>
+            <div className="rs"><div className="v">{req.days || '—'}</div><div className="l">عدد الأيام</div></div>
             <div className="rs"><div className="v">{photoCount}</div><div className="l">صور موثّقة</div></div>
             <div className="rs"><div className="v">{rep.video ? '✓' : '—'}</div><div className="l">فيديو</div></div>
           </div>

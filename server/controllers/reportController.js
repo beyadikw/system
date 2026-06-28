@@ -92,7 +92,7 @@ exports.getByToken = async (req, res, next) => {
   try {
     const rows = await q(
       `SELECT r.id, r.event_name, r.organization, r.lecturer, r.hall_id, h.name AS hall_name,
-              h.capacity AS hall_capacity, r.proposed_dates, r.goals, r.axes
+              h.capacity AS hall_capacity, r.proposed_dates, r.days, r.goals, r.axes
        FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.share_token=? OR r.id=?`,
       [req.params.token, req.params.token]
     );

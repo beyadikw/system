@@ -92,6 +92,16 @@ async function migrate({ log = console.log } = {}) {
       await conn.query(`ALTER TABLE \`reports\` ADD COLUMN status ENUM('pending','accepted') NOT NULL DEFAULT 'accepted'`);
       log('✔ ترحيل: أُضيف عمود status إلى جدول reports');
     }
+    // ترحيل: عمود days في جدول requests
+    const [drows] = await conn.query(
+      `SELECT COUNT(*) AS c FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'requests' AND COLUMN_NAME = 'days'`,
+      [dbName]
+    );
+    if (drows[0] && drows[0].c === 0) {
+      await conn.query(`ALTER TABLE \`requests\` ADD COLUMN days INT UNSIGNED NULL AFTER proposed_dates`);
+      log('✔ ترحيل: أُضيف عمود days إلى جدول requests');
+    }
   } finally {
     await conn.end();
   }

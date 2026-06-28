@@ -133,7 +133,7 @@
       try {
         const r = await API.share.get(token);
         $('title').textContent = r.event_name;
-        $('meta').textContent = `${r.hall_name || ''} · ${r.proposed_dates || ''} · المحاضر ${r.lecturer || '—'}`;
+        $('meta').textContent = `${r.hall_name || ''} · ${r.proposed_dates || ''}${r.days ? ' · ' + r.days + ' يوم' : ''} · المحاضر ${r.lecturer || '—'}`;
         $('banner').textContent = `هذه صفحة مخصّصة لـ «${r.organization}» لرفع تقرير فعالية «${r.event_name}». بعد الإرسال يصل التقرير مباشرةً إلى فريق خذ بيدي.`;
         $('attendees').placeholder = `0 (السعة ${r.hall_capacity || '—'})`;
         $('loading').style.display = 'none';

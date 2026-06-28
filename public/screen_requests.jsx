@@ -6,20 +6,25 @@ function EditRequestModal({ req, onClose, onSave }) {
   const { HALLS, CATS } = window.SEED;
   const [f, setF] = useStateR(() => ({
     event: req.event || '', org: req.org || '', lecturer: req.lecturer || '',
-    hall: req.hall || '', dates: req.dates || '', phone: req.phone || '', insta: req.insta || '',
+    hall: req.hall || '', dateFrom: req.dateFrom || '', dateTo: req.dateTo || '', phone: req.phone || '', insta: req.insta || '',
     goals: req.goals || '', axes: req.axes || '', cats: [...(req.cats || [])], notes: req.notes || '',
   }));
   const [err, setErr] = useStateR({});
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const days = daysBetween(f.dateFrom, f.dateTo);
+  const datesText = fmtDateRange(f.dateFrom, f.dateTo);
   const toggleCat = (id) => setF(p => ({ ...p, cats: p.cats.includes(id) ? p.cats.filter(c => c !== id) : [...p.cats, id] }));
 
   function save() {
     const e = {};
-    ['event', 'org', 'lecturer', 'hall', 'dates'].forEach(k => { if (!String(f[k]).trim()) e[k] = 'مطلوب'; });
+    ['event', 'org', 'lecturer', 'hall'].forEach(k => { if (!String(f[k]).trim()) e[k] = 'مطلوب'; });
+    if (!f.dateFrom) e.dateFrom = 'مطلوب';
+    if (!f.dateTo) e.dateTo = 'مطلوب';
+    if (f.dateFrom && f.dateTo && f.dateTo < f.dateFrom) e.dateTo = 'تاريخ النهاية قبل البداية';
     if (f.cats.length === 0) e.cats = 'اختر فئة واحدة على الأقل';
     setErr(e);
     if (Object.keys(e).length) return;
-    onSave({ ...req, ...f });
+    onSave({ ...req, ...f, dates: datesText, days });
   }
 
   return (
@@ -60,9 +65,20 @@ function EditRequestModal({ req, onClose, onSave }) {
           </div>
           <div className="fgrp two">
             <div className="fgrp">
-              <label className="flbl">التواريخ المقترحة<span className="req">*</span></label>
-              <input className={`inp ${err.dates ? 'err' : ''}`} value={f.dates} onChange={e => set('dates', e.target.value)} />
-              {err.dates && <div className="errmsg">{err.dates}</div>}
+              <label className="flbl">من تاريخ<span className="req">*</span></label>
+              <input type="date" className={`inp ${err.dateFrom ? 'err' : ''}`} value={f.dateFrom} onChange={e => set('dateFrom', e.target.value)} />
+              {err.dateFrom && <div className="errmsg">{err.dateFrom}</div>}
+            </div>
+            <div className="fgrp">
+              <label className="flbl">إلى تاريخ<span className="req">*</span></label>
+              <input type="date" className={`inp ${err.dateTo ? 'err' : ''}`} value={f.dateTo} min={f.dateFrom || undefined} onChange={e => set('dateTo', e.target.value)} />
+              {err.dateTo && <div className="errmsg">{err.dateTo}</div>}
+            </div>
+          </div>
+          <div className="fgrp two">
+            <div className="fgrp">
+              <label className="flbl">عدد الأيام<small>يُحتسب تلقائياً</small></label>
+              <input className="inp" value={f.dateFrom ? days + ' يوم' : '—'} readOnly style={{ background: 'var(--bk-gold-tint)', fontWeight: 700, color: 'var(--bk-gold-deep)' }} />
             </div>
             <div className="fgrp">
               <label className="flbl">رقم الهاتف</label>
@@ -164,6 +180,7 @@ function RequestDrawer({ req, onClose, onUpdate, onNav, onEdit, onDelete }) {
         <div className="field-row"><div className="k">المحاضر</div><div className="v">{req.lecturer}</div></div>
         <div className="field-row"><div className="k">القاعة المطلوبة</div><div className="v">{hallName(req.hall)}</div></div>
         <div className="field-row"><div className="k">التواريخ المقترحة</div><div className="v">{req.dates}</div></div>
+        {req.days ? <div className="field-row"><div className="k">عدد الأيام</div><div className="v">{req.days} يوم</div></div> : null}
         <div className="field-row"><div className="k">الفئة المستهدفة</div><div className="v"><div className="row-flex" style={{ flexWrap: 'wrap', gap: 6 }}>{req.cats.map(c => <span key={c} className="chip">{catName(c)}</span>)}</div></div></div>
         <div className="field-row"><div className="k">أهداف الفعالية</div><div className="v">{req.goals}</div></div>
         <div className="field-row"><div className="k">محاور الفعالية</div><div className="v">{req.axes}</div></div>

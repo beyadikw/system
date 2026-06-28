@@ -30,6 +30,7 @@
       phone: r.phone,
       insta: r.instagram,
       dates: r.proposed_dates,
+      days: r.days || null,
       goals: r.goals,
       axes: r.axes,
       notes: r.notes,
@@ -104,7 +105,7 @@
       if (!LIVE) return { ...payload, status: 'review' };
       const fields = {
         event: payload.event, org: payload.org, lecturer: payload.lecturer, hall: payload.hall,
-        phone: payload.phone, insta: payload.insta, dates: payload.dates,
+        phone: payload.phone, insta: payload.insta, dates: payload.dates, days: payload.days || '',
         goals: payload.goals, axes: payload.axes, notes: payload.notes || '',
         cats: payload.cats, agree: 'true',
       };
