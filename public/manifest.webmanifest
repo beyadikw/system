@@ -1,0 +1,17 @@
+{
+  "name": "خذ بيدي — بوابة طلبات رعاية الفعاليات",
+  "short_name": "خذ بيدي",
+  "description": "بوابة استقبال ومراجعة طلبات رعاية الفعاليات — مشروع خذ بيدي",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./login.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAF8F2",
+  "theme_color": "#2A2520",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
