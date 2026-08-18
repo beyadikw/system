@@ -5,6 +5,6 @@ const { upload } = require('../middleware/upload');
 
 // عام — برابط الرمز المخصّص للجهة المنفّذة
 router.get('/:token', ctrl.getByToken);
-router.post('/:token', upload.fields([{ name: 'photos', maxCount: 6 }]), ctrl.submitByToken);
+router.post('/:token', upload.fields([{ name: 'photos', maxCount: 6 }, { name: 'poster', maxCount: 1 }]), ctrl.submitByToken);
 
 module.exports = router;

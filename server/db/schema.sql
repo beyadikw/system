@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS request_categories (
 CREATE TABLE IF NOT EXISTS attachments (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   request_id  VARCHAR(20) NOT NULL,
-  kind        ENUM('request_doc','cv','photo','video') NOT NULL,
+  kind        ENUM('request_doc','cv','photo','video','poster') NOT NULL,
   file_name   VARCHAR(255) NOT NULL,
   stored_path VARCHAR(255) NOT NULL,
   mime_type   VARCHAR(120),

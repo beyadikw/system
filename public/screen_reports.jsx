@@ -26,6 +26,25 @@ function PhotoUploader({ photos, onChange }) {
   );
 }
 
+/* ---------- single poster/announcement image uploader ---------- */
+function PosterUploader({ image, onChange }) {
+  const ref = useRefRp(null);
+  function pick(file) {
+    const r = new FileReader();
+    r.onload = e => onChange(e.target.result);
+    r.readAsDataURL(file);
+  }
+  return (
+    <div className="upslot poster" onClick={() => ref.current && ref.current.click()}
+      style={image ? { backgroundImage: `url(${image})` } : {}}>
+      <input type="file" accept="image/*" ref={ref} style={{ display: 'none' }}
+        onChange={e => { if (e.target.files[0]) pick(e.target.files[0]); }} />
+      {!image && <React.Fragment><Icon name="monitoring" tone="gold" /><span>صورة الإعلان</span></React.Fragment>}
+      {image && <button className="rm" onClick={ev => { ev.stopPropagation(); onChange(null); }}>×</button>}
+    </div>
+  );
+}
+
 /* ---------- shared report form fields ---------- */
 function ReportForm({ req, external, editing, onSave, onCancel }) {
   const cap = hallCap(req.hall);
@@ -35,6 +54,7 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
   const [summary, setSummary] = useStateRp(init.summary || '');
   const [outcomes, setOutcomes] = useStateRp(init.outcomes || '');
   const [notes, setNotes] = useStateRp(init.notes || '');
+  const [poster, setPoster] = useStateRp(init.poster || null);
   const [photos, setPhotos] = useStateRp(() => {
     const base = Array(6).fill(null);
     (init.photoData || []).forEach((d, i) => { if (i < 6) base[i] = d; });
@@ -50,7 +70,7 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
     if (Object.keys(e).length) return;
     onSave(req.id, {
       attendees: Number(attendees), capacity: cap, video,
-      summary, outcomes, notes,
+      summary, outcomes, notes, poster,
       photoData: photos.filter(Boolean),
       source: external ? 'executor' : 'internal',
       pending: !!external,
@@ -72,6 +92,11 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
             <div className={`opt ${!video ? 'sel' : ''}`} onClick={() => setVideo(false)}><span className="mk"></span><div className="ot"><b>غير متوفّر</b></div></div>
           </div>
         </div>
+      </div>
+
+      <div className="fgrp">
+        <label className="flbl">صورة إعلان الفعالية<small>صورة تصميم الإعلان الذي نُشر للفعالية (اختياري)</small></label>
+        <PosterUploader image={poster} onChange={setPoster} />
       </div>
 
       <div className="fgrp">
@@ -301,6 +326,7 @@ function ReportView({ req, onBack, onEdit, onAccept }) {
             </div>
           </div>
 
+          {rep.poster && <div className="report-sec"><h4>إعلان الفعالية</h4><img src={rep.poster} alt="إعلان الفعالية" style={{ maxWidth: 320, width: '100%', borderRadius: 10, border: '1px solid var(--da-line)' }} /></div>}
           <div className="report-sec"><h4>ملخّص الفعالية</h4><p>{rep.summary}</p></div>
           {rep.outcomes && <div className="report-sec"><h4>النتائج والأثر</h4><p>{rep.outcomes}</p></div>}
 

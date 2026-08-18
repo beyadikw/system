@@ -581,6 +581,7 @@ label.flbl small { font-weight: 400; color: var(--da-muted); display: block; mar
 }
 .upslot:hover { border-color: var(--bk-gold); background-color: var(--bk-gold-tint); }
 .upslot.filled { border-style: solid; border-color: var(--bk-gold-line); }
+.upslot.poster { max-width: 260px; }
 .upslot .da-icon { width: 24px; height: 24px; }
 .upslot .rm {
   position: absolute; top: 6px; inset-inline-end: 6px;

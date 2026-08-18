@@ -14,11 +14,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # تهيئة الجداول تلقائياً عند أول تشغيل
+      # تهيئة الجداول تلقائياً عند أول تشغيل (لا تُعِد هذه القيمة إلى "true" — AUTO_SEED
+      # يُعيد إدراج طلبات تجريبية وهمية إلى القاعدة الحيّة في كل إقلاع)
       - key: AUTO_INIT
         value: "true"
       - key: AUTO_SEED
-        value: "true"
+        value: "false"
       # إعدادات قاعدة بيانات سحابية (Aiven): قاعدة جاهزة + SSL
       - key: DB_CREATE
         value: "false"

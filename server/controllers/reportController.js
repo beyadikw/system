@@ -11,11 +11,13 @@ async function saveReport({ requestId, body, files, source, status }) {
   const capacity = Number(body.capacity) || reqRows[0].hall_capacity || 0;
   const st = status || 'accepted';
 
-  // ارفع صور التقرير أولاً (Cloudinary/القرص) قبل المعاملة
+  // ارفع صور التقرير وصورة الإعلان أولاً (Cloudinary/القرص) قبل المعاملة
   const { persist } = require('../services/storage');
   const photoFiles = (files && files.photos) || [];
   const photoStored = [];
   for (const p of photoFiles) photoStored.push({ f: p, url: await persist(p) });
+  const posterFile = (files && files.poster && files.poster[0]) || null;
+  const posterStored = posterFile ? await persist(posterFile) : null;
 
   await withTx(async (conn) => {
     await conn.execute(
@@ -27,6 +29,15 @@ async function saveReport({ requestId, body, files, source, status }) {
       [requestId, Number(body.attendees) || 0, capacity, body.video === 'true' || body.video === true ? 1 : 0,
        body.summary || null, body.outcomes || null, body.notes || null, source, st]
     );
+    // صورة إعلان الفعالية (تُستبدل الصورة القديمة إن وُجدت)
+    if (posterStored) {
+      await conn.execute(`DELETE FROM attachments WHERE request_id=? AND kind='poster'`, [requestId]);
+      await conn.execute(
+        `INSERT INTO attachments (request_id, kind, file_name, stored_path, mime_type, size_bytes, sort)
+         VALUES (?, 'poster', ?,?,?,?,0)`,
+        [requestId, posterFile.originalname, posterStored, posterFile.mimetype, posterFile.size]
+      );
+    }
     // صور التقرير
     if (photoStored.length) {
       const existing = await conn.execute(`SELECT COUNT(*) c FROM attachments WHERE request_id=? AND kind='photo'`, [requestId]);

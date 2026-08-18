@@ -78,11 +78,12 @@
       list: () => req('GET', '/reports'),
       get: (requestId) => req('GET', '/reports/' + requestId),
       accept: (requestId) => req('POST', '/reports/' + requestId + '/accept'),
-      /** حفظ تقرير داخلي — fields + صور (مصفوفة File) */
-      save(requestId, fields, photos) {
+      /** حفظ تقرير داخلي — fields + صور (مصفوفة File) + صورة إعلان اختيارية */
+      save(requestId, fields, photos, poster) {
         const fd = new FormData();
         Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
         (photos || []).forEach((p) => fd.append('photos', p));
+        if (poster) fd.append('poster', poster);
         return req('POST', '/reports/' + requestId, fd, true);
       },
     },
@@ -90,10 +91,11 @@
     // ---- رابط الجهة المنفّذة (عام) ----
     share: {
       get: (token) => req('GET', '/share/' + token),
-      submit(token, fields, photos) {
+      submit(token, fields, photos, poster) {
         const fd = new FormData();
         Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
         (photos || []).forEach((p) => fd.append('photos', p));
+        if (poster) fd.append('poster', poster);
         return req('POST', '/share/' + token, fd, true);
       },
     },

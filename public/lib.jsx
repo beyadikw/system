@@ -383,6 +383,7 @@ function reportDocHTML(req) {
   ${h2('نبذة عن المشروع')}
   ${para(intro)}
 
+  ${rep.poster ? h2('إعلان الفعالية') + `<div style="text-align:center; margin-bottom:14px;"><img src="${rep.poster}" style="max-width:360px; width:100%; border-radius:10px; border:1px solid #eee;" alt="إعلان الفعالية"></div>` : ''}
   ${h2('بيانات الفعالية')}
   <table width="100%">
     ${drow('اسم الفعالية', req.event)}
@@ -448,7 +449,8 @@ async function imgToDataURL(url) {
 async function reqWithEmbeddedImages(req) {
   const rep = req.report || {};
   const photos = await Promise.all((rep.photoData || []).map(imgToDataURL));
-  return { ...req, report: { ...rep, photoData: photos } };
+  const poster = rep.poster ? await imgToDataURL(rep.poster) : rep.poster;
+  return { ...req, report: { ...rep, photoData: photos, poster } };
 }
 
 function downloadReportPDF(req) { printHTML(reportDocHTML(req)); }

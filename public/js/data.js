@@ -20,6 +20,7 @@
     const findAtt = (kind) => atts.find(a => a.kind === kind);
     const reqDoc = findAtt('request_doc');
     const cv = findAtt('cv');
+    const posterAtt = findAtt('poster');
     return {
       id: r.id,
       event: r.event_name,
@@ -47,6 +48,7 @@
         outcomes: r.report.outcomes,
         notes: r.report.notes,
         photoData: photos,
+        poster: posterAtt && posterAtt.stored_path ? fileUrl(posterAtt.stored_path) : null,
         source: r.report.source || 'internal',
         status: r.report.status || 'accepted',
         pending: (r.report.status || 'accepted') === 'pending',
@@ -134,12 +136,13 @@
       const photos = (rep.photoData || []).map((d, i) =>
         typeof d === 'string' && d.startsWith('data:') ? dataUrlToFile(d, `photo-${i + 1}.jpg`) : null
       ).filter(Boolean);
+      const poster = typeof rep.poster === 'string' && rep.poster.startsWith('data:') ? dataUrlToFile(rep.poster, 'poster.jpg') : null;
       const fields = {
         attendees: rep.attendees, capacity: rep.capacity,
         video: String(!!rep.video), summary: rep.summary || '',
         outcomes: rep.outcomes || '', notes: rep.notes || '',
       };
-      await window.API.reports.save(id, fields, photos);
+      await window.API.reports.save(id, fields, photos, poster);
     },
 
     async acceptReport(id) {

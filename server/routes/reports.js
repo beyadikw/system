@@ -7,7 +7,7 @@ const { requireAuth } = require('../middleware/auth');
 // داخلي (فريق المشروع)
 router.get('/', requireAuth, ctrl.list);
 router.get('/:requestId', requireAuth, ctrl.getOne);
-router.post('/:requestId', requireAuth, upload.fields([{ name: 'photos', maxCount: 6 }]), ctrl.create);
+router.post('/:requestId', requireAuth, upload.fields([{ name: 'photos', maxCount: 6 }, { name: 'poster', maxCount: 1 }]), ctrl.create);
 router.post('/:requestId/accept', requireAuth, ctrl.accept);
 
 module.exports = router;

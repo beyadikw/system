@@ -74,6 +74,9 @@
         </div>
       </div>
 
+      <label>صورة إعلان الفعالية <small style="font-weight:400;color:#9a9388">— اختياري</small></label>
+      <div class="upgrid" id="poster" style="grid-template-columns:1fr; max-width:220px;"></div>
+
       <label>صور الفعالية <small style="font-weight:400;color:#9a9388">— حتى ٦ صور عالية الجودة</small></label>
       <div class="upgrid" id="photos"></div>
 
@@ -105,7 +108,29 @@
     const token = new URLSearchParams(location.search).get('token');
     const $ = (id) => document.getElementById(id);
     let video = 0;
+    let posterFile = null;
     const photoFiles = new Array(6).fill(null);
+
+    // خانة صورة الإعلان
+    (() => {
+      const grid = $('poster');
+      const slot = document.createElement('div');
+      slot.className = 'slot'; slot.textContent = 'صورة الإعلان';
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none';
+      inp.addEventListener('change', e => {
+        const f = e.target.files[0]; if (!f) return;
+        posterFile = f;
+        const url = URL.createObjectURL(f);
+        slot.style.backgroundImage = `url(${url})`; slot.classList.add('filled'); slot.textContent = '';
+        const rm = document.createElement('button');
+        rm.className = 'rm'; rm.type = 'button'; rm.textContent = '×';
+        rm.addEventListener('click', ev => { ev.stopPropagation(); posterFile = null; slot.style.backgroundImage = ''; slot.classList.remove('filled'); slot.textContent = 'صورة الإعلان'; inp.value = ''; });
+        slot.appendChild(rm);
+      });
+      slot.addEventListener('click', () => inp.click());
+      slot.appendChild(inp); grid.appendChild(slot);
+    })();
 
     // أزرار الفيديو
     $('videoSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
@@ -161,7 +186,7 @@
         await API.share.submit(token, {
           attendees: $('attendees').value, video: String(video),
           summary: $('summary').value, outcomes: $('outcomes').value, notes: $('notes').value,
-        }, photoFiles.filter(Boolean));
+        }, photoFiles.filter(Boolean), posterFile);
         $('form').classList.add('state-hidden');
         $('success').classList.remove('state-hidden');
         window.scrollTo({ top: 0 });

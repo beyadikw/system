@@ -102,6 +102,16 @@ async function migrate({ log = console.log } = {}) {
       await conn.query(`ALTER TABLE \`requests\` ADD COLUMN days INT UNSIGNED NULL AFTER proposed_dates`);
       log('✔ ترحيل: أُضيف عمود days إلى جدول requests');
     }
+    // ترحيل: إضافة 'poster' إلى قيم attachments.kind (صورة إعلان الفعالية)
+    const [krows] = await conn.query(
+      `SELECT COLUMN_TYPE AS t FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'attachments' AND COLUMN_NAME = 'kind'`,
+      [dbName]
+    );
+    if (krows[0] && !/'poster'/.test(krows[0].t)) {
+      await conn.query(`ALTER TABLE \`attachments\` MODIFY COLUMN kind ENUM('request_doc','cv','photo','video','poster') NOT NULL`);
+      log('✔ ترحيل: أُضيف poster إلى قيم attachments.kind');
+    }
   } finally {
     await conn.end();
   }
