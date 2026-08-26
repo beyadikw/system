@@ -68,20 +68,29 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
   const [poster, setPoster] = useStateRp(init.poster || null);
   const [photos, setPhotos] = useStateRp(() => (init.photoData || []).filter(Boolean).slice(0, 6));
   const [err, setErr] = useStateRp({});
+  const [saving, setSaving] = useStateRp(false);
+  const [saveErr, setSaveErr] = useStateRp('');
 
-  function save() {
+  async function save() {
     const e = {};
     if (!String(attendees).trim()) e.attendees = 'مطلوب';
     if (!summary.trim()) e.summary = 'مطلوب';
     setErr(e);
     if (Object.keys(e).length) return;
-    onSave(req.id, {
-      attendees: Number(attendees), capacity: cap, video,
-      summary, outcomes, notes, poster,
-      photoData: photos,
-      source: external ? 'executor' : 'internal',
-      pending: !!external,
-    });
+    setSaveErr(''); setSaving(true);
+    try {
+      await onSave(req.id, {
+        attendees: Number(attendees), capacity: cap, video,
+        summary, outcomes, notes, poster,
+        photoData: photos,
+        source: external ? 'executor' : 'internal',
+        pending: !!external,
+      });
+    } catch (e2) {
+      setSaveErr((e2 && e2.message) || 'تعذّر حفظ التقرير. حاول مرة أخرى.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -126,10 +135,13 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
       </div>
 
       <div className="spread" style={{ borderTop: '1px solid var(--da-line)', paddingTop: 20 }}>
-        {onCancel ? <button className="btn btn-ghost" onClick={onCancel}>إلغاء</button> : <span></span>}
-        <button className="btn btn-primary" onClick={save}>
-          <Icon name="tasks" />{external ? 'إرسال التقرير إلى خذ بيدي' : (editing ? 'حفظ التعديلات' : 'حفظ ونشر التقرير')}
-        </button>
+        {onCancel ? <button className="btn btn-ghost" onClick={onCancel} disabled={saving}>إلغاء</button> : <span></span>}
+        <div style={{ textAlign: 'end' }}>
+          {saveErr && <div className="errmsg" style={{ marginBottom: 8 }}>{saveErr}</div>}
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            <Icon name="tasks" />{saving ? 'جارٍ الحفظ…' : external ? 'إرسال التقرير إلى خذ بيدي' : (editing ? 'حفظ التعديلات' : 'حفظ ونشر التقرير')}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -172,7 +184,7 @@ function ExternalReportView({ req, onSave, onClose }) {
             <div className="card" style={{ padding: '24px 26px' }}>
               <h3 style={{ fontSize: 18, margin: '0 0 4px' }}>{req.event}</h3>
               <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 18 }}>{hallName(req.hall)} · {req.dates} · المحاضر {req.lecturer}</p>
-              <ReportForm req={req} external onSave={(id, rep) => { onSave(id, rep); setSubmitted(true); window.scrollTo({ top: 0 }); }} />
+              <ReportForm req={req} external onSave={async (id, rep) => { await onSave(id, rep); setSubmitted(true); window.scrollTo({ top: 0 }); }} />
             </div>
           </React.Fragment>
         ) : (
@@ -395,7 +407,7 @@ function ReportsScreen({ requests, onSaveReport, onAcceptReport, focusId, onClea
   );
 
   if (mode === 'build' && selReq) {
-    return <React.Fragment><ReportBuilder req={selReq} onCancel={() => { setMode('list'); setSel(null); }} onSave={(id, rep) => { onSaveReport(id, rep); setMode('view'); }} />{overlay}</React.Fragment>;
+    return <React.Fragment><ReportBuilder req={selReq} onCancel={() => { setMode('list'); setSel(null); }} onSave={async (id, rep) => { await onSaveReport(id, rep); setMode('view'); }} />{overlay}</React.Fragment>;
   }
   if (mode === 'view' && selReq && selReq.report) {
     return <React.Fragment><ReportView req={selReq} onBack={() => { setMode('list'); setSel(null); }} onEdit={(id) => { setSel(id); setMode('build'); }} onAccept={(id) => { onAcceptReport(id); }} />{overlay}</React.Fragment>;
@@ -438,6 +450,14 @@ function ReportsScreen({ requests, onSaveReport, onAcceptReport, focusId, onClea
 
   return (
     <div className="screen">
+      {window.Store && window.Store.LIVE && window.SEED.STORAGE_PERSISTENT === false && (
+        <div className="card" style={{ marginBottom: 20, borderColor: 'var(--st-review)', background: 'var(--st-review-bg)', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px' }}>
+          <Icon name="alert" tone="warm" size={22} />
+          <div style={{ flex: 1, fontSize: 13, color: 'var(--st-review)' }}>
+            <b>تخزين الصور غير دائم حالياً.</b> لم يُضبط Cloudinary على الخادم — أي صور مرفوعة قد تُفقد بعد إعادة تشغيل الخادم. أضف متغيّر البيئة CLOUDINARY_URL على Render لحفظ الصور بشكل دائم.
+          </div>
+        </div>
+      )}
       {pendingAccept.length > 0 && (
         <div className="card" style={{ marginBottom: 20, borderColor: 'var(--st-review)', background: 'var(--st-review-bg)' }}>
           <div className="card-h">

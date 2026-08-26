@@ -181,10 +181,16 @@ function App() {
     showToast(`تم استلام طلب «${req.event}»`);
     if (LIVE) refreshRequests();
   }
-  function saveReport(id, rep) {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', report: rep, beneficiaries: rep.attendees } : r));
+  async function saveReport(id, rep) {
     const r = requests.find(x => x.id === id);
     const name = r ? r.event : id;
+    if (LIVE) {
+      try { await window.Store.saveReport(id, rep); }
+      catch (e) { showToast('تعذّر حفظ التقرير: ' + e.message); throw e; }
+      await refreshRequests();
+    } else {
+      setRequests(prev => prev.map(x => x.id === id ? { ...x, status: 'approved', report: rep, beneficiaries: rep.attendees } : x));
+    }
     if (rep.pending) {
       pushNotif(makeNotif('report', 'تقرير ختامي بانتظار القبول', name, id));
       showToast(`ورد تقرير «${name}» بانتظار قبولك`);
@@ -193,8 +199,6 @@ function App() {
       pushNotif(makeNotif('report', 'تم حفظ التقرير الختامي', name, id));
       showToast(`تم حفظ تقرير «${name}»`);
     }
-    if (LIVE) window.Store.saveReport(id, rep).then(refreshRequests)
-      .catch(e => showToast('تعذّر حفظ التقرير: ' + e.message));
   }
   function acceptReport(id) {
     setRequests(prev => prev.map(r => (r.id === id && r.report) ? { ...r, report: { ...r.report, pending: false, status: 'accepted' } } : r));
