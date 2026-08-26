@@ -20,6 +20,11 @@ services:
         value: "true"
       - key: AUTO_SEED
         value: "false"
+      # تخزين دائم للصور (Cloudinary) — بدونها تُحفَظ الصور على قرص Render المؤقّت
+      # وتُفقَد عند أي إعادة تشغيل/نشر. أنشئ حساباً مجانياً على cloudinary.com
+      # وأدخل رابط CLOUDINARY_URL من Dashboard → API Environment variable
+      - key: CLOUDINARY_URL
+        sync: false
       # إعدادات قاعدة بيانات سحابية (Aiven): قاعدة جاهزة + SSL
       - key: DB_CREATE
         value: "false"

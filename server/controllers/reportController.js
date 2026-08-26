@@ -4,6 +4,16 @@ const { q, withTx } = require('../config/db');
 const { hydrateRequest } = require('./helpers');
 const { sendMail, templates } = require('../services/email');
 
+/** يستخرج اسم الملف/الرابط المخزَّن من رابط كامل يصل من الواجهة (لمطابقته بـ stored_path) */
+function toStoredPath(u) {
+  if (!u) return u;
+  if (/^https?:\/\//i.test(u)) {
+    const m = u.match(/\/uploads\/([^/?]+)$/);
+    return m ? m[1] : u; // رابط Cloudinary دائم يُستخدم كما هو؛ رابط محلي يُختصر لاسم الملف
+  }
+  return u;
+}
+
 /** يحفظ/يحدّث تقريراً ويربط صوره */
 async function saveReport({ requestId, body, files, source, status }) {
   const reqRows = await q(`SELECT r.*, h.capacity AS hall_capacity FROM requests r LEFT JOIN halls h ON h.id=r.hall_id WHERE r.id=?`, [requestId]);
@@ -29,7 +39,7 @@ async function saveReport({ requestId, body, files, source, status }) {
       [requestId, Number(body.attendees) || 0, capacity, body.video === 'true' || body.video === true ? 1 : 0,
        body.summary || null, body.outcomes || null, body.notes || null, source, st]
     );
-    // صورة إعلان الفعالية (تُستبدل الصورة القديمة إن وُجدت)
+    // صورة إعلان الفعالية (تُستبدل الصورة القديمة إن وُجدت، أو تُحذف إن أُزيلت في الواجهة)
     if (posterStored) {
       await conn.execute(`DELETE FROM attachments WHERE request_id=? AND kind='poster'`, [requestId]);
       await conn.execute(
@@ -37,9 +47,29 @@ async function saveReport({ requestId, body, files, source, status }) {
          VALUES (?, 'poster', ?,?,?,?,0)`,
         [requestId, posterFile.originalname, posterStored, posterFile.mimetype, posterFile.size]
       );
+    } else if (body.clearPoster === 'true') {
+      await conn.execute(`DELETE FROM attachments WHERE request_id=? AND kind='poster'`, [requestId]);
     }
-    // صور التقرير
-    if (photoStored.length) {
+    // صور التقرير — تُطابَق الصور المُبقاة (keepPhotos) بترتيبها الجديد، وتُحذف أي صورة أُزيلت في الواجهة
+    if (body.keepPhotos !== undefined) {
+      let keepList = [];
+      try { keepList = JSON.parse(body.keepPhotos) || []; } catch (e) { keepList = []; }
+      const keepPaths = keepList.map(toStoredPath);
+      const existingRows = await conn.execute(`SELECT id, stored_path FROM attachments WHERE request_id=? AND kind='photo'`, [requestId]);
+      for (const row of existingRows[0]) {
+        const idx = keepPaths.indexOf(row.stored_path);
+        if (idx === -1) await conn.execute(`DELETE FROM attachments WHERE id=?`, [row.id]);
+        else await conn.execute(`UPDATE attachments SET sort=? WHERE id=?`, [idx, row.id]);
+      }
+      let sort = keepPaths.length;
+      for (const p of photoStored) {
+        await conn.execute(
+          `INSERT INTO attachments (request_id, kind, file_name, stored_path, mime_type, size_bytes, sort)
+           VALUES (?, 'photo', ?,?,?,?,?)`,
+          [requestId, p.f.originalname, p.url, p.f.mimetype, p.f.size, sort++]
+        );
+      }
+    } else if (photoStored.length) {
       const existing = await conn.execute(`SELECT COUNT(*) c FROM attachments WHERE request_id=? AND kind='photo'`, [requestId]);
       let sort = existing[0][0].c;
       for (const p of photoStored) {

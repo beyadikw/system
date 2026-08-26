@@ -136,11 +136,14 @@
       const photos = (rep.photoData || []).map((d, i) =>
         typeof d === 'string' && d.startsWith('data:') ? dataUrlToFile(d, `photo-${i + 1}.jpg`) : null
       ).filter(Boolean);
+      // \u0627\u0644\u0635\u0648\u0631 \u0627\u0644\u0645\u064f\u0628\u0642\u0627\u0629 \u0645\u0646 \u0627\u0644\u062a\u0642\u0631\u064a\u0631 \u0627\u0644\u0633\u0627\u0628\u0642 (\u0631\u0648\u0627\u0628\u0637\u060c \u0644\u064a\u0633\u062a data:) \u0628\u0646\u0641\u0633 \u0627\u0644\u062a\u0631\u062a\u064a\u0628 \u2014 \u062a\u064f\u0631\u0633\u0644 \u0644\u0644\u062e\u0627\u062f\u0645 \u0644\u062d\u0630\u0641 \u0627\u0644\u0645\u0632\u0627\u0644 \u0648\u0627\u0644\u062d\u0641\u0627\u0638 \u0639\u0644\u0649 \u0627\u0644\u062a\u0631\u062a\u064a\u0628\n      const keepPhotos = (rep.photoData || []).filter(d => typeof d === 'string' && !d.startsWith('data:'));
       const poster = typeof rep.poster === 'string' && rep.poster.startsWith('data:') ? dataUrlToFile(rep.poster, 'poster.jpg') : null;
       const fields = {
         attendees: rep.attendees, capacity: rep.capacity,
         video: String(!!rep.video), summary: rep.summary || '',
         outcomes: rep.outcomes || '', notes: rep.notes || '',
+        keepPhotos: JSON.stringify(keepPhotos),
+        clearPoster: String(!rep.poster),
       };
       await window.API.reports.save(id, fields, photos, poster);
     },

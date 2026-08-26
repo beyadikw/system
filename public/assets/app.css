@@ -540,12 +540,14 @@ label.flbl small { font-weight: 400; color: var(--da-muted); display: block; mar
 .report-sec h4 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 9px; }
 .report-sec h4::before { content: ''; width: 4px; height: 17px; background: var(--bk-gold); border-radius: 2px; }
 .report-sec p { font-size: 14px; line-height: 1.8; color: var(--da-ink-2); margin: 0; }
-.photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.photo-grid { display: flex; flex-wrap: wrap; gap: 12px; }
 .photo-slot {
-  aspect-ratio: 4/3; border-radius: 12px; background: var(--da-bg);
+  width: 150px; height: 112px; border-radius: 12px; background: var(--da-bg);
   border: 1px solid var(--da-line); display: grid; place-items: center;
-  color: var(--da-faint); position: relative; overflow: hidden;
+  color: var(--da-faint); position: relative; overflow: hidden; flex: 0 0 auto;
 }
+.photo-slot.filled { border: 1px solid var(--da-line); height: 150px; width: auto; padding: 0; }
+.photo-slot.filled img { height: 100%; width: auto; max-width: 260px; display: block; object-fit: contain; }
 .photo-slot .da-icon { width: 28px; height: 28px; }
 .photo-slot .cap { position: absolute; bottom: 0; inset-inline: 0; background: linear-gradient(transparent, rgba(0,0,0,.6)); color: #fff; font-size: 11px; padding: 14px 10px 7px; }
 
@@ -570,18 +572,20 @@ label.flbl small { font-weight: 400; color: var(--da-muted); display: block; mar
 .screen { opacity: 1; animation: fadeUp var(--dur-slow) var(--ease-standard); }
 @media (prefers-reduced-motion: reduce) { .screen { animation: none; } }
 
-/* ---- photo uploader (6 slots) ---- */
-.upgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+/* ---- photo uploader (flexible, up to 6) ---- */
+.upgrid { display: flex; flex-wrap: wrap; gap: 12px; }
 .upslot {
-  aspect-ratio: 4/3; border: 1.5px dashed var(--da-border-strong); border-radius: 12px;
-  background: var(--da-bg) center/cover no-repeat;
+  border: 1.5px dashed var(--da-border-strong); border-radius: 12px;
+  background: var(--da-bg);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   cursor: pointer; color: var(--da-muted); font-size: 12px; position: relative;
-  transition: all var(--dur-fast);
+  transition: all var(--dur-fast); overflow: hidden;
 }
-.upslot:hover { border-color: var(--bk-gold); background-color: var(--bk-gold-tint); }
-.upslot.filled { border-style: solid; border-color: var(--bk-gold-line); }
-.upslot.poster { max-width: 260px; }
+.upslot.add { width: 130px; height: 130px; flex: 0 0 auto; }
+.upslot.add:hover { border-color: var(--bk-gold); background-color: var(--bk-gold-tint); }
+.upslot.filled { border-style: solid; border-color: var(--bk-gold-line); height: 130px; width: auto; flex: 0 0 auto; padding: 0; cursor: default; }
+.upslot.filled img { height: 100%; width: auto; max-width: 220px; display: block; object-fit: contain; }
+.upslot.poster.filled { height: 170px; }
 .upslot .da-icon { width: 24px; height: 24px; }
 .upslot .rm {
   position: absolute; top: 6px; inset-inline-end: 6px;

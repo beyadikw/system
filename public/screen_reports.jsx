@@ -3,30 +3,35 @@ const { useState: useStateRp, useEffect: useEffectRp, useRef: useRefRp } = React
 
 function hallCap(id) { const h = window.SEED.HALLS.find(x => x.id === id); return h ? h.cap : 0; }
 
-/* ---------- 6-slot photo uploader ---------- */
+/* ---------- flexible photo uploader (up to 6, each shown at its own size — no crop) ---------- */
 function PhotoUploader({ photos, onChange }) {
-  const refs = useRefRp([]);
-  function pick(i, file) {
+  const ref = useRefRp(null);
+  function pick(file) {
     const r = new FileReader();
-    r.onload = e => { const next = [...photos]; next[i] = e.target.result; onChange(next); };
+    r.onload = e => onChange([...photos, e.target.result]);
     r.readAsDataURL(file);
   }
+  function remove(i) { const n = photos.slice(); n.splice(i, 1); onChange(n); }
   return (
     <div className="upgrid">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className={`upslot ${photos[i] ? 'filled' : ''}`} onClick={() => refs.current[i] && refs.current[i].click()}
-          style={photos[i] ? { backgroundImage: `url(${photos[i]})` } : {}}>
-          <input type="file" accept="image/*" ref={el => refs.current[i] = el} style={{ display: 'none' }}
-            onChange={e => { if (e.target.files[0]) pick(i, e.target.files[0]); }} />
-          {!photos[i] && <React.Fragment><Icon name="monitoring" tone="gold" /><span>صورة {i + 1}</span></React.Fragment>}
-          {photos[i] && <button className="rm" onClick={ev => { ev.stopPropagation(); const n = [...photos]; n[i] = null; onChange(n); }}>×</button>}
+      {photos.map((d, i) => (
+        <div key={i} className="upslot filled">
+          <img src={d} alt={`صورة ${i + 1}`} />
+          <button className="rm" onClick={() => remove(i)}>×</button>
         </div>
       ))}
+      {photos.length < 6 && (
+        <div className="upslot add" onClick={() => ref.current && ref.current.click()}>
+          <input type="file" accept="image/*" ref={ref} style={{ display: 'none' }}
+            onChange={e => { if (e.target.files[0]) pick(e.target.files[0]); e.target.value = ''; }} />
+          <Icon name="monitoring" tone="gold" /><span>إضافة صورة {photos.length + 1}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ---------- single poster/announcement image uploader ---------- */
+/* ---------- single poster/announcement image uploader (shown at its own size — no crop) ---------- */
 function PosterUploader({ image, onChange }) {
   const ref = useRefRp(null);
   function pick(file) {
@@ -34,13 +39,19 @@ function PosterUploader({ image, onChange }) {
     r.onload = e => onChange(e.target.result);
     r.readAsDataURL(file);
   }
+  if (image) {
+    return (
+      <div className="upslot poster filled">
+        <img src={image} alt="صورة الإعلان" />
+        <button className="rm" onClick={() => onChange(null)}>×</button>
+      </div>
+    );
+  }
   return (
-    <div className="upslot poster" onClick={() => ref.current && ref.current.click()}
-      style={image ? { backgroundImage: `url(${image})` } : {}}>
+    <div className="upslot poster add" onClick={() => ref.current && ref.current.click()}>
       <input type="file" accept="image/*" ref={ref} style={{ display: 'none' }}
         onChange={e => { if (e.target.files[0]) pick(e.target.files[0]); }} />
-      {!image && <React.Fragment><Icon name="monitoring" tone="gold" /><span>صورة الإعلان</span></React.Fragment>}
-      {image && <button className="rm" onClick={ev => { ev.stopPropagation(); onChange(null); }}>×</button>}
+      <Icon name="monitoring" tone="gold" /><span>صورة الإعلان</span>
     </div>
   );
 }
@@ -55,11 +66,7 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
   const [outcomes, setOutcomes] = useStateRp(init.outcomes || '');
   const [notes, setNotes] = useStateRp(init.notes || '');
   const [poster, setPoster] = useStateRp(init.poster || null);
-  const [photos, setPhotos] = useStateRp(() => {
-    const base = Array(6).fill(null);
-    (init.photoData || []).forEach((d, i) => { if (i < 6) base[i] = d; });
-    return base;
-  });
+  const [photos, setPhotos] = useStateRp(() => (init.photoData || []).filter(Boolean).slice(0, 6));
   const [err, setErr] = useStateRp({});
 
   function save() {
@@ -71,7 +78,7 @@ function ReportForm({ req, external, editing, onSave, onCancel }) {
     onSave(req.id, {
       attendees: Number(attendees), capacity: cap, video,
       summary, outcomes, notes, poster,
-      photoData: photos.filter(Boolean),
+      photoData: photos,
       source: external ? 'executor' : 'internal',
       pending: !!external,
     });
@@ -259,7 +266,6 @@ function ReportView({ req, onBack, onEdit, onAccept }) {
   const pct = Math.round((rep.attendees / rep.capacity) * 100);
   const photos = (rep.photoData || []).filter(Boolean);
   const photoCount = photos.length || rep.photos || 6;
-  const slots = photos.length ? photos : Array.from({ length: 6 }).map(() => null);
   return (
     <div className="screen">
       <div className="spread" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
@@ -333,10 +339,10 @@ function ReportView({ req, onBack, onEdit, onAccept }) {
           <div className="report-sec">
             <h4>توثيق مصوّر <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {photoCount} صورة</span></h4>
             <div className="photo-grid">
-              {slots.map((d, i) => (
-                <div className="photo-slot" key={i} style={d ? { backgroundImage: `url(${d})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
-                  {!d && <React.Fragment><Icon name="monitoring" tone="neutral" size={28} /><div className="cap">صورة {i + 1} من الفعالية</div></React.Fragment>}
-                </div>
+              {photos.length ? photos.map((d, i) => (
+                <div className="photo-slot filled" key={i}><img src={d} alt={`صورة ${i + 1} من الفعالية`} /></div>
+              )) : Array.from({ length: 6 }).map((_, i) => (
+                <div className="photo-slot" key={i}><Icon name="monitoring" tone="neutral" size={28} /><div className="cap">صورة {i + 1} من الفعالية</div></div>
               ))}
             </div>
           </div>
