@@ -109,6 +109,7 @@ function photoGridTable(photoImgs, total) {
   }
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    visuallyRightToLeft: true,
     borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder },
     rows,
   });
@@ -159,6 +160,7 @@ async function buildReportDocx(full) {
   children.push(heading('بيانات الفعالية'));
   children.push(new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    visuallyRightToLeft: true,
     borders: {
       top: { style: BorderStyle.SINGLE, size: 4, color: 'EADFC4' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'EADFC4' },
       left: { style: BorderStyle.SINGLE, size: 4, color: 'EADFC4' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'EADFC4' },
