@@ -7,11 +7,10 @@ const { sendMail, templates } = require('../services/email');
 /** يستخرج اسم الملف/الرابط المخزَّن من رابط كامل يصل من الواجهة (لمطابقته بـ stored_path) */
 function toStoredPath(u) {
   if (!u) return u;
-  if (/^https?:\/\//i.test(u)) {
-    const m = u.match(/\/uploads\/([^/?]+)$/);
-    return m ? m[1] : u; // رابط Cloudinary دائم يُستخدم كما هو؛ رابط محلي يُختصر لاسم الملف
-  }
-  return u;
+  // يعمل مع الروابط المطلقة (uploads.example.com/uploads/x.jpg) والنسبية (/uploads/x.jpg على نفس الأصل)
+  const m = u.match(/\/uploads\/([^/?]+)$/);
+  if (m) return m[1];
+  return u; // رابط Cloudinary دائم (لا يحوي /uploads/) يُستخدم كما هو
 }
 
 /** يحفظ/يحدّث تقريراً ويربط صوره */
