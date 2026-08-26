@@ -101,6 +101,19 @@ exports.list = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
+/** GET /api/reports/:requestId/word — ملف Word (.docx) واحد ومستقل، بصوره مُضمَّنة فعلياً داخله */
+exports.downloadWord = async (req, res, next) => {
+  try {
+    const full = await hydrateRequest(req.params.requestId);
+    if (!full || !full.report) return res.status(404).json({ error: 'لا يوجد تقرير لهذا الطلب' });
+    const { buildReportDocx } = require('../services/docxReport');
+    const { buffer, filename } = await buildReportDocx(full);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="report.docx"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.send(buffer);
+  } catch (e) { next(e); }
+};
+
 /** GET /api/reports/:requestId */
 exports.getOne = async (req, res, next) => {
   try {

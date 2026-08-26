@@ -78,6 +78,23 @@
       list: () => req('GET', '/reports'),
       get: (requestId) => req('GET', '/reports/' + requestId),
       accept: (requestId) => req('POST', '/reports/' + requestId + '/accept'),
+      /** يجلب ملف تقرير Word (.docx) جاهزاً وصوره مُضمَّنة فعلياً داخله، ويعيد Blob + اسم الملف */
+      async downloadWord(requestId) {
+        const headers = {};
+        const token = getToken();
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch(BASE + '/reports/' + requestId + '/word', { headers });
+        if (!res.ok) {
+          let msg = 'تعذّر تنزيل ملف Word';
+          try { const d = await res.json(); if (d && d.error) msg = d.error; } catch (e) {}
+          throw new Error(msg);
+        }
+        const blob = await res.blob();
+        const cd = res.headers.get('Content-Disposition') || '';
+        const m = cd.match(/filename\*=UTF-8''([^;]+)/i);
+        const filename = m ? decodeURIComponent(m[1]) : `تقرير-${requestId}.docx`;
+        return { blob, filename };
+      },
       /** حفظ تقرير داخلي — fields + صور (مصفوفة File) + صورة إعلان اختيارية */
       save(requestId, fields, photos, poster) {
         const fd = new FormData();

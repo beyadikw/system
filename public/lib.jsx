@@ -456,7 +456,16 @@ async function reqWithEmbeddedImages(req) {
 function downloadReportPDF(req) { printHTML(reportDocHTML(req)); }
 
 async function downloadReportWord(req) {
-  const embedded = await reqWithEmbeddedImages(req);   // ضمّن الصور لتظهر في Word
+  // الوضع الحيّ: يطلب من الخادم ملف .docx حقيقياً وصوره مُضمَّنة فعلياً بداخله (لا مجلد صور منفصل)
+  if (window.Store && window.Store.LIVE) {
+    try {
+      const { blob, filename } = await window.API.reports.downloadWord(req.id);
+      triggerDownload(blob, filename);
+    } catch (e) { alert('تعذّر تنزيل تقرير Word: ' + e.message); }
+    return;
+  }
+  // الوضع التجريبي (بدون خادم) — مستند HTML بصور مُضمَّنة كـ Data URL يفتحه Word مباشرة
+  const embedded = await reqWithEmbeddedImages(req);
   triggerDownload(new Blob(['\ufeff' + reportDocHTML(embedded)], { type: 'application/msword' }), `تقرير - ${safeFileName(req.event)}.doc`);
 }
 
