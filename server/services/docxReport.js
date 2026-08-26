@@ -94,6 +94,25 @@ function imageParagraph(imgResult, caption) {
   if (caption) out.push(new Paragraph({ alignment: AlignmentType.CENTER, bidirectional: true, spacing: { after: 220 }, children: [new TextRun({ text: caption, color: MUT, size: 18 })] }));
   return out;
 }
+/** جدول صور بعمودين (مثل ترتيب ملف PDF) بلا حدود — كل خلية فيها صورة (أو فارغة إن فردية)
+ * تحافظ على نسبتها دون تمدد أو اقتصاص */
+function photoGridTable(photoImgs, total) {
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const cell = (p) => new TableCell({
+    width: { size: 50, type: WidthType.PERCENTAGE }, borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
+    margins: { top: 80, bottom: 80, left: 60, right: 60 },
+    children: p ? imageParagraph(p.img, `صورة ${p.index} من الفعالية`) : [new Paragraph({ children: [] })],
+  });
+  const rows = [];
+  for (let i = 0; i < photoImgs.length; i += 2) {
+    rows.push(new TableRow({ children: [cell(photoImgs[i]), cell(photoImgs[i + 1])] }));
+  }
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder },
+    rows,
+  });
+}
 
 /** يبني Buffer لملف .docx كامل ومستقل لتقرير فعالية، بصوره مُضمَّنة فعلياً داخل الملف */
 async function buildReportDocx(full) {
@@ -110,9 +129,11 @@ async function buildReportDocx(full) {
   const photoImgs = [];
   for (let i = 0; i < photoAtts.length; i++) {
     const buf = await resolveImageBuffer(photoAtts[i].stored_path);
-    const img = buf ? buildImage(buf, 520, 420) : null;
+    const img = buf ? buildImage(buf, 280, 260) : null;
     if (img) photoImgs.push({ img, index: i + 1 });
   }
+
+  const INTRO = 'مشروع «خذ بيدي» مجموعة من البرامج والأنشطة الداعمة للمجتمع بالتعاون مع الجهات المتخصصة، تستهدف الأطفال والشباب والأمهات لإمدادهم بالمعلومات اللازمة لتطوير مهاراتهم وقدراتهم، من خلال الدورات التدريبية والمحاضرات والبرامج التوعوية والثقافية الهادفة. والمشروع مساهمة ومبادرة من ثلث المرحوم عبدالله عبداللطيف العثمان تحت إشراف بيت الزكاة، ومن خلال مبرّة المتميّزين بالتعاون مع دار العثمان ومركز البروميناد الثقافي، وهو معتمد من وزارة الشؤون الاجتماعية.';
 
   const children = [];
   children.push(new Paragraph({
@@ -128,6 +149,12 @@ async function buildReportDocx(full) {
     border: { bottom: { style: BorderStyle.SINGLE, size: 16, color: GOLD } },
     children: [new TextRun({ text: `${full.organization || ''} · ${full.proposed_dates || ''}`, color: MUT, size: 22 })],
   }));
+
+  children.push(heading('نبذة عن المشروع'));
+  children.push(...textBlock(INTRO));
+
+  if (posterImg) { children.push(heading('إعلان الفعالية')); children.push(...imageParagraph(posterImg, null)); }
+  else if (posterAtt) { children.push(heading('إعلان الفعالية')); children.push(...textBlock('(تعذّر تحميل صورة الإعلان)', { color: '9A9388' })); }
 
   children.push(heading('بيانات الفعالية'));
   children.push(new Table({
@@ -150,15 +177,14 @@ async function buildReportDocx(full) {
     ],
   }));
 
-  if (posterImg) { children.push(heading('إعلان الفعالية')); children.push(...imageParagraph(posterImg, null)); }
-  else if (posterAtt) { children.push(heading('إعلان الفعالية')); children.push(...textBlock('(تعذّر تحميل صورة الإعلان)', { color: '9A9388' })); }
-
+  if (full.goals) { children.push(heading('أهداف الفعالية')); children.push(...textBlock(full.goals)); }
+  if (full.axes) { children.push(heading('محاور الفعالية')); children.push(...textBlock(full.axes)); }
   if (rep.summary) { children.push(heading('ملخّص الفعالية')); children.push(...textBlock(rep.summary)); }
   if (rep.outcomes) { children.push(heading('النتائج والأثر')); children.push(...textBlock(rep.outcomes)); }
 
   children.push(heading(`التوثيق المصوّر · ${photoAtts.length} صورة`));
   if (photoImgs.length) {
-    photoImgs.forEach(p => children.push(...imageParagraph(p.img, `صورة ${p.index} من الفعالية`)));
+    children.push(photoGridTable(photoImgs, photoAtts.length));
   } else {
     children.push(...textBlock(photoAtts.length ? '(تعذّر تحميل صور الفعالية)' : 'لا توجد صور مرفقة بعد.', { color: '9A9388' }));
   }
@@ -166,9 +192,13 @@ async function buildReportDocx(full) {
   if (rep.notes) { children.push(heading('ملاحظات وتوصيات')); children.push(...textBlock(rep.notes)); }
 
   children.push(new Paragraph({
-    alignment: AlignmentType.CENTER, bidirectional: true, spacing: { before: 400 },
+    alignment: AlignmentType.CENTER, bidirectional: true, spacing: { before: 400, after: 40 },
     border: { top: { style: BorderStyle.SINGLE, size: 16, color: GOLD } },
     children: [new TextRun({ text: 'صدر هذا التقرير عن مشروع «خذ بيدي» — ثلث المرحوم عبدالله عبداللطيف العثمان', color: MUT, size: 18 })],
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, bidirectional: true,
+    children: [new TextRun({ text: 'بإشراف بيت الزكاة · مبرّة المتميّزين · بالتعاون مع دار العثمان ومركز البروميناد الثقافي', color: MUT, size: 18 })],
   }));
 
   const doc = new Document({
